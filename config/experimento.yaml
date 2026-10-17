@@ -1,0 +1,19 @@
+# Configuração declarativa do experimento de risco de infrequência.
+# Uso: frequencia experimentos criar <pasta_dataset> --config config/experimento.yaml
+identificador: risco-infrequencia-padrao
+semente: 20261018
+versao_modelo: ""
+min_app_versao: 1.4.0
+tentativas_optuna: 0
+dobras_ensemble: 3
+
+# Parâmetros do modelo principal (LightGBM) quando a busca está desligada.
+parametros:
+  n_estimators: 120
+  max_depth: 4
+  num_leaves: 24
+  learning_rate: 0.08
+  min_child_samples: 25
+  subsample: 0.9
+  colsample_bytree: 0.9
+  reg_lambda: 1.0

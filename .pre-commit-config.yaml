@@ -1,0 +1,15 @@
+# Gatilhos de qualidade antes de cada commit, no venv do projeto.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: local
+    hooks:
+      - id: guarda-editorial
+        name: guarda editorial (sem travessão, aspas curvas ou setas)
+        entry: python -m pytest tests/test_editorial.py -q
+        language: system
+        pass_filenames: false

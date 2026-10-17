@@ -1,0 +1,105 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "frequencia"
+version = "0.1.0"
+description = "FrequencIA: ecossistema de MLOps do FrequenciApp. Treina, avalia, empacota e publica modelos leves de risco de infrequência para inferência local no navegador."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Equipe FrequencIA" }]
+keywords = ["mlops", "educacao", "frequencia-escolar", "lgpd", "edge-inference"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: Portuguese (Brazilian)",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Todas as dependências são fixadas por versão exata para reprodutibilidade
+# do caminho venv e do caminho Docker. Substituições exigem ADR (ver docs/adr/0007).
+dependencies = [
+  "polars==2.0.0",
+  "pandas==3.0.6",
+  "pyarrow==25.0.1",
+  "numpy==2.4.6",
+  "scipy==1.18.1",
+  "pandera==0.34.1",
+  "scikit-learn==1.9.1",
+  "lightgbm==4.7.0",
+  "xgboost==3.4.1",
+  "catboost==1.2.10",
+  "optuna==5.0.0",
+  "mlflow==3.17.1",
+  "dvc==3.67.1",
+  "onnx==1.23.2",
+  "skl2onnx==1.20.0",
+  "onnxmltools==1.16.0",
+  "m2cgen==0.10.0",
+  "typer==0.27.3",
+  "rich==15.0.0",
+  "streamlit==1.66.0",
+  "presidio-analyzer==2.2.364",
+  "pyyaml==6.0.3",
+  "packaging==26.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.1.1",
+  "hypothesis==6.170.1",
+  "ruff==0.17.1",
+  "mypy==2.4.0",
+  "pre-commit==4.7.0",
+]
+
+[project.scripts]
+frequencia = "frequencia.cli.app:executar"
+
+[project.urls]
+Repositorio = "https://github.com/eemtijca/frequencia"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/frequencia"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RET", "PTH", "RUF",
+]
+ignore = [
+  "N803",  # nomes de domínio em PT-BR podem ter acento na assinatura
+  "N806",
+  "N818",  # exceções de domínio sem sufixo Error, convenção do projeto
+  "B008",  # typer.Option como valor padrão é o padrão da ferramenta
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SIM117"]
+"src/frequencia/web/app.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+files = ["src/frequencia"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+  "smoke: testes de fumaça exigidos pelo contrato de pronto",
+  "lento: testes que demoram mais de um minuto",
+]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::FutureWarning",
+]

@@ -1,0 +1,46 @@
+{
+  "ano": 2026,
+  "contagens": {
+    "alunos": 30,
+    "contexto_mec": 2,
+    "entradas": 47,
+    "escolas": 1,
+    "faltas": 279,
+    "feriados": 2,
+    "frequencias": 80,
+    "horarios": 8,
+    "saidas": 50,
+    "series": 2,
+    "turmas": 2
+  },
+  "dias_letivos": 40,
+  "gerador": "frequencia.dados.sintetico",
+  "hashes": {
+    "alunos.csv": "9beed3a7a1883cc6492cc2cc2e62fe81190c1bed648f69ac0ed0ff711c2a9370",
+    "contexto_mec.csv": "2f2f2bf543b7e79e7f1c2abe13913f340118285838972328300e21cd0d55ca81",
+    "entradas.csv": "3d653397e934b4be8878196e3084fe4252428624c37033ef6712babfc434a65a",
+    "escolas.csv": "8ac6bb6669e7dee95e80e4ed258f8b3ea91562188a30b9ffe33957efc07c9cb8",
+    "faltas.csv": "f1e400afcea0655e05d71339fb9c0a1487fa927e2a81e96b1611ee2895e03856",
+    "feriados.csv": "7dd5111368d9576f7906a6fe9720a016e9b3aba985ff4f3bf4d98c08fd1d8904",
+    "frequencias.csv": "ffde3bcae96d19dd597fecd22a7ca80674a3208450ed2043757350463f05d878",
+    "horarios.csv": "40bc246f4a1e3f4ba338b4c36354ed3cddad9d950f026521ab88e5b4d34b073e",
+    "saidas.csv": "6d7559b1970012fa26ba5c38260c609bf877244c042be6ec1d6cf24f886f354e",
+    "series.csv": "f7603442211fa49a55718b527e8f5824d5150e49b8ac02d64e553788bb0e6635",
+    "turmas.csv": "21f10630e16182d5460af5e8843382aae04f10aec227885770142d73d1464226",
+    "verdade_oculta/verdade_oculta.csv": "855bf02885681929c4726240f5df8914b85d0e8555654cc252b4335215db08e9"
+  },
+  "perfil": "amostra",
+  "perfis_escola": {
+    "escola_alfa": {
+      "frequencia_por_aula": true,
+      "origem_na_chamada": true,
+      "saida_antecipada": true
+    }
+  },
+  "periodo": [
+    "2026-02-02",
+    "2026-03-31"
+  ],
+  "sem_dados_pessoais": true,
+  "semente": 20261018
+}

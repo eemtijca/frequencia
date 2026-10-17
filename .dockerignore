@@ -1,0 +1,20 @@
+# Reduz a imagem Docker ao necessário: código, dados sintéticos e scripts.
+.venv
+var
+.git
+.gitignore
+*.log
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+docs
+projetos
+INSTRUCOES.md
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
+AGENTS.md
+.pre-commit-config.yaml
+docker-compose.yml
