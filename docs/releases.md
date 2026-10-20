@@ -56,6 +56,8 @@ O pacote de inferência tem versionamento próprio, gerado pelo ciclo de experim
 
 O projeto não publica no PyPI. O consumo do pacote Python acontece pelo código-fonte, pelo wheel da release ou pela imagem de runtime.
 
+A imagem de runtime é construída e validada no workflow `testes.yml` antes de qualquer release. O Compose sobe o MLflow e o painel, confere a saúde dos dois serviços e executa o ciclo completo no container.
+
 ### Visibilidade do GHCR
 
 A primeira publicação cria o pacote `ghcr.io/eemtijca/frequencia`. Se a visibilidade padrão for privada, um mantenedor deve torná-la pública nas configurações do pacote ou pela API de pacotes do GitHub, com um token que tenha permissão de administração do pacote. O workflow não altera a visibilidade.
