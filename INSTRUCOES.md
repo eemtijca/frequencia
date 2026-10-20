@@ -57,7 +57,7 @@ streamlit run src/frequencia/web/app.py    # painel em http://localhost:8501
 
 ## Caminho Docker (artefato implementado, não executado aqui)
 
-O caminho Docker foi implementado e documentado conforme as especificações, mas não foi executado no ambiente de construção deste repositório. O caminho venv foi validado ponta a ponta. Recomenda-se ao primeiro consumidor executar os smoke tests em Docker antes de promover a produção. Isso é transparência, não falha: o compose, o Dockerfile e os healthchecks foram escritos para funcionar na primeira tentativa, com volumes corretos e verificação de saúde por HTTP.
+O caminho Docker é construído e validado no CI. O workflow `testes.yml` sobe o MLflow e o painel, confere a saúde dos serviços e executa o ciclo completo no container. O serviço `mlflow` usa a imagem de runtime do projeto, que já instala o MLflow do `pyproject.toml`; o serviço `smoke` usa a imagem de desenvolvimento, com Node 20 e a suíte de testes. O caminho venv continua sendo o mais rápido para o desenvolvimento local.
 
 ```bash
 cp .env.example .env

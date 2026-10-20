@@ -12,6 +12,7 @@ Convenção e cobertura das suítes do FrequencIA. Toda execução cria e limpa 
 | Features | tests/features/ | Catálogo válido, derivação das marcas conforme o documento soberano, célula vazia como ausência, marca S só com chamada por aula, ordem do contrato sem nulos, ordinal agrupando raras, estados de confiança, histerese, aquecimento, calendário cíclico, ponto-in-tempo |
 | Pipelines | tests/pipelines/ | Separação temporal estrita com purga, rótulo só com janela futura, verificação de futuro por reconstrução, treino com métricas, ensemble com pesos e OOF, calibração protegendo a identidade, conformal com cobertura, curva de aprendizado |
 | Exportação | tests/exportacao/ | Ciclo completo com gates, paridade Python e Node com divergência zero, tamanho e latência nos limites, manifesto válido, integridade do pacote, dados-teste automáticos, fallback com a mesma interface, ONNX válido, nenhum nome de pessoa nos artefatos, histerese no pacote |
+| Compose | workflow `testes.yml` | Build das imagens de runtime e desenvolvimento, saúde do MLflow e do painel, ciclo completo no container |
 | CLI | tests/cli/ | Ajuda de todos os grupos, erro amigável sem stack trace, JSON estruturado, modo seco sem gravar, força exigindo justificativa, fluxo completo por subprocesso |
 | Web | tests/web/ | Importação das dezesseis páginas, renderização da visão geral com AppTest, tarefa de fundo executando a CLI e registrando desfecho |
 | Propriedades | tests/properties/ | Invariantes com Hypothesis: estado de confiança no vocabulário, pesos e misturas no intervalo unitário, histerese monotona, baseline determinístico e limitado, regras crescem com falta recente |
@@ -23,6 +24,7 @@ python -m pytest tests -q          # suíte completa
 bash scripts/smoke.sh              # ciclo completo mais suíte
 python -m pytest tests/exportacao -q -m smoke
 python scripts/gerar_dicionario.py --check
+docker compose --profile ciclo up smoke   # ciclo completo no container
 ```
 
 A suíte completa roda em cerca de 45 segundos numa máquina comum. Os testes que exigem Node pulam com aviso quando ele está ausente.

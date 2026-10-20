@@ -24,3 +24,6 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 - Políticas de proteção da branch principal e das tags de release, com revisão obrigatória por CODEOWNERS, checks de qualidade, squash e ambiente de release.
 - Verificação do dicionário de features e sincronização das etiquetas do GitHub pelo próprio repositório.
 - ADR-016 registrando a governança, os portões de qualidade e o fluxo de release.
+- Imagem Docker multi-stage com runtime enxuto, Node 20 no estágio de desenvolvimento e `libgomp1` para o LightGBM.
+- Validação do Compose no CI, com MLflow e painel saudáveis e ciclo completo executado no container.
+- Instalação limpa do wheel e publicação da imagem de runtime no GHCR.

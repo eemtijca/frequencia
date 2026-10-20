@@ -127,7 +127,7 @@ docker compose up --build        # sobe MLflow (5000) e o painel (8501)
 docker compose --profile ciclo up smoke   # roda o smoke test dentro do contêiner
 ```
 
-O caminho Docker foi implementado e documentado conforme as especificações, com containers separados para MLflow e Streamlit, volumes compartilhados e healthchecks, mas não foi executado no ambiente de construção deste repositório: a validação ponta a ponta foi feita no venv com Python 3.12 e Node. Recomenda-se ao primeiro consumidor executar os smoke tests em Docker antes de promover a produção. Detalhes em [INSTRUCOES.md](INSTRUCOES.md).
+O caminho Docker é construído e validado no CI: o workflow `testes.yml` sobe o MLflow e o painel, confere a saúde dos dois serviços e executa o ciclo completo no container. A imagem de runtime é a usada pelo painel e pelo MLflow; a imagem de desenvolvimento, com Node 20 e testes, roda o smoke. O caminho venv continua sendo o mais rápido para o desenvolvimento local. Detalhes em [INSTRUCOES.md](INSTRUCOES.md).
 
 ## Privacidade
 
