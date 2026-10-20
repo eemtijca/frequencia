@@ -1,0 +1,190 @@
+# Atualizações de dependências pelo Dependabot.
+# Versões menores e correções entram agrupadas por domínio; versões maiores
+# ficam individuais para revisão com a ADR-007 e o smoke completo.
+# Atualizações de segurança não usam grupo nem cooldown e devem ser tratadas
+# com prioridade.
+
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Fortaleza
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies
+      - "area: infra"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      python-dev:
+        patterns:
+          - pytest
+          - hypothesis
+          - ruff
+          - mypy
+          - pre-commit
+          - hatchling
+          - build
+        update-types:
+          - minor
+          - patch
+      python-dados:
+        patterns:
+          - polars
+          - pandas
+          - pyarrow
+          - numpy
+          - scipy
+          - pandera
+        update-types:
+          - minor
+          - patch
+      python-modelagem:
+        patterns:
+          - scikit-learn
+          - lightgbm
+          - xgboost
+          - catboost
+          - optuna
+          - mlflow
+          - dvc
+          - onnx
+          - skl2onnx
+          - onnxmltools
+          - m2cgen
+        update-types:
+          - minor
+          - patch
+      python-produto:
+        patterns:
+          - typer
+          - rich
+          - streamlit
+          - presidio-analyzer
+          - pyyaml
+          - packaging
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Fortaleza
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies
+      - "area: infra"
+    cooldown:
+      default-days: 7
+    groups:
+      hooks:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Fortaleza
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies
+      - "area: infra"
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+    groups:
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Fortaleza
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies
+      - "area: infra"
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+    groups:
+      imagens:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Fortaleza
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies
+      - "area: infra"
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: python
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+    groups:
+      imagens:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch

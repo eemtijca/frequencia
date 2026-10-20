@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Vulnerabilidades de segurança
+    url: https://github.com/eemtijca/frequencia/security/advisories/new
+    about: Reporte falhas de segurança de forma privada, conforme o SECURITY.md.
+  - name: Documentação
+    url: https://github.com/eemtijca/frequencia/blob/main/docs/README.md
+    about: Consulte os guias técnicos antes de abrir uma issue.
+  - name: Guia de contribuição
+    url: https://github.com/eemtijca/frequencia/blob/main/CONTRIBUTING.md
+    about: Consulte as regras de etiquetas, commits e pull requests antes de contribuir.

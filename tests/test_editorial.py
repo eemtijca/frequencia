@@ -24,7 +24,19 @@ PROIBIDOS = {
 }
 
 EXTENSOES = (".py", ".md", ".toml", ".yml", ".yaml", ".sh", ".json", ".js")
-PASTAS_IGNORADAS = {".venv", "var", "node_modules", ".git", "__pycache__", ".mypy_cache", ".ruff_cache"}
+PASTAS_IGNORADAS = {
+    ".venv",
+    "var",
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    "dist",
+    "build",
+    ".tox",
+    ".nox",
+}
 ARQUIVOS_IGNORADOS = {"uv.lock"}
 
 
@@ -34,6 +46,8 @@ def _arquivos_alvo(raiz: Path) -> list[Path]:
         if not caminho.is_file():
             continue
         if any(parte in PASTAS_IGNORADAS for parte in caminho.parts):
+            continue
+        if any(parte.endswith(".egg-info") for parte in caminho.parts):
             continue
         if caminho.name in ARQUIVOS_IGNORADOS:
             continue
