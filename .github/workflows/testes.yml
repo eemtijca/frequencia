@@ -53,3 +53,45 @@ jobs:
           path: var/relatorios/
           if-no-files-found: ignore
           retention-days: 7
+
+  compose:
+    name: Compose e imagem
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Validar a configuração do Compose
+        run: docker compose config --quiet
+
+      - name: Construir as imagens
+        run: docker compose --profile ciclo build
+
+      - name: Subir o MLflow e o painel
+        run: docker compose up -d mlflow app
+
+      - name: Aguardar a saúde dos serviços
+        shell: bash
+        run: |
+          for tentativa in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8501/_stcore/health > /dev/null \
+              && curl -fsS http://127.0.0.1:5000/health > /dev/null; then
+              echo "Serviços disponíveis após ${tentativa} tentativa(s)."
+              exit 0
+            fi
+            sleep 5
+          done
+          docker compose logs
+          exit 1
+
+      - name: Rodar o ciclo completo no container
+        run: docker compose --profile ciclo run --rm smoke
+
+      - name: Exibir logs em caso de falha
+        if: failure()
+        run: docker compose --profile ciclo logs
+
+      - name: Derrubar o ambiente
+        if: always()
+        run: docker compose --profile ciclo down -v --remove-orphans
