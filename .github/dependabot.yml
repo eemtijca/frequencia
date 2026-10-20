@@ -20,6 +20,12 @@ updates:
     labels:
       - dependencies
       - "area: infra"
+    # presidio-analyzer 2.2.364 exige numpy<2.5.0. Remova esta regra quando o
+    # presidio aceitar a série 2.5; os alertas de segurança continuam ativos.
+    ignore:
+      - dependency-name: numpy
+        versions:
+          - ">=2.5.0, <2.6.0"
     cooldown:
       default-days: 7
       semver-major-days: 14
