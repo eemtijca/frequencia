@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,12 +13,15 @@ CAMINHO_APP = ["-m", "frequencia.cli.app"]
 
 
 def _rodar(argumentos: list[str], workspace: Path) -> subprocess.CompletedProcess:
+    ambiente = os.environ.copy()
+    ambiente["FREQUENCIA_WORKSPACE"] = str(workspace)
+    ambiente["HOME"] = str(workspace)
     return subprocess.run(
         [sys.executable, *CAMINHO_APP, "--workspace", str(workspace), *argumentos],
         capture_output=True,
         text=True,
         timeout=600,
-        env={"FREQUENCIA_WORKSPACE": str(workspace), "PATH": "/usr/bin:/bin", "HOME": str(workspace)},
+        env=ambiente,
     )
 
 
