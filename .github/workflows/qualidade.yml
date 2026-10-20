@@ -1,0 +1,86 @@
+# Qualidade: formatação, lint, tipos, unidade e dicionário de features.
+name: Qualidade
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: qualidade-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  qualidade:
+    name: Formatação, lint, tipos e unidade
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Preparar Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Preparar Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: Instalar bibliotecas de sistema
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgomp1
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip check
+
+      - name: Verificar formatação
+        run: ruff format --check src tests
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Tipos
+        run: mypy src/frequencia
+
+      - name: Testes de unidade e guarda editorial
+        run: pytest tests -q
+
+      - name: Dicionário de features
+        run: python scripts/gerar_dicionario.py --check
+
+      - name: Consistência do ruff com o pre-commit
+        shell: bash
+        run: |
+          versao_pyproject="$(python - <<'PY'
+          import re
+          from pathlib import Path
+          texto = Path("pyproject.toml").read_text(encoding="utf-8")
+          correspondencia = re.search(r'"ruff==([0-9.]+)"', texto)
+          if not correspondencia:
+              raise SystemExit("Versão do ruff não encontrada no pyproject.toml.")
+          print(correspondencia.group(1))
+          PY
+          )"
+          versao_hook="$(python - <<'PY'
+          import re
+          from pathlib import Path
+          texto = Path(".pre-commit-config.yaml").read_text(encoding="utf-8")
+          correspondencia = re.search(r"rev:\s*v([0-9.]+)", texto)
+          if not correspondencia:
+              raise SystemExit("Versão do ruff não encontrada no pre-commit.")
+          print(correspondencia.group(1))
+          PY
+          )"
+          if [ "$versao_pyproject" != "$versao_hook" ]; then
+            echo "ruff do pyproject ($versao_pyproject) difere do pre-commit ($versao_hook)." >&2
+            exit 1
+          fi
