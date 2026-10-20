@@ -75,9 +75,7 @@ def peso_historico(historico_dias: int, aquecimento_dias: int | None = None) -> 
     peso do modelo conforme o histórico acumula.
     """
     dias_aquecimento = (
-        LIMIARES_CONFIANCA["aquecimento_dias"]
-        if aquecimento_dias is None
-        else int(aquecimento_dias)
+        LIMIARES_CONFIANCA["aquecimento_dias"] if aquecimento_dias is None else int(aquecimento_dias)
     )
     if historico_dias is None or historico_dias <= 0:
         return 0.0
