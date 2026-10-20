@@ -1,0 +1,10 @@
+# Normaliza os finais de linha para o ambiente Linux do CI e do Docker.
+* text=auto
+*.sh text eol=lf
+Dockerfile text eol=lf
+Makefile text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
