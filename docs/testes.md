@@ -6,7 +6,7 @@ Convenção e cobertura das suítes do FrequencIA. Toda execução cria e limpa 
 
 | Família | Pasta | O que garante |
 | --- | --- | --- |
-| Guarda editorial | tests/test_editorial.py | Tom de texto: sem travessão, aspas curvas, reticências tipográficas e setas fora de cercas de código; cabeçalho em português em cada arquivo |
+| Guarda editorial | tests/test_editorial.py | Tom de texto: sem travessão, aspas curvas, reticências tipográficas e setas fora de cercas de código; cabeçalho nos módulos de `src/` |
 | Dados | tests/dados/ | Esquema das onze tabelas, determinismo da semente, sazonalidade por dia da semana, perfis de escola, eventos retroativos, isolamento da verdade oculta, calendário com feriados e recesso |
 | Privacidade | tests/privacidade/ | Detector com regex própria e presidio, portão que bloqueia PII, identificadores proibidos, pseudonimização estável, relatório de risco graduado, logs sem dado pessoal |
 | Features | tests/features/ | Catálogo válido, derivação das marcas conforme o documento soberano, célula vazia como ausência, marca S só com chamada por aula, ordem do contrato sem nulos, ordinal agrupando raras, estados de confiança, histerese, aquecimento, calendário cíclico, ponto-in-tempo |
@@ -22,9 +22,12 @@ Convenção e cobertura das suítes do FrequencIA. Toda execução cria e limpa 
 python -m pytest tests -q          # suíte completa
 bash scripts/smoke.sh              # ciclo completo mais suíte
 python -m pytest tests/exportacao -q -m smoke
+python scripts/gerar_dicionario.py --check
 ```
 
 A suíte completa roda em cerca de 45 segundos numa máquina comum. Os testes que exigem Node pulam com aviso quando ele está ausente.
+
+O dicionário de features é gerado por `scripts/gerar_dicionario.py` e conferido no workflow de qualidade. O ciclo em Docker é validado pelo job `Compose e imagem` do workflow `testes.yml`.
 
 ## Convenções
 

@@ -15,6 +15,7 @@
 | [guia-de-exportacao.md](guia-de-exportacao.md) | Como preparar exportações autorizadas do app. |
 | [privacidade-lgpd.md](privacidade-lgpd.md) | Dados tratados, bases legais, portões e direitos. |
 | [publicacao-de-modelos.md](publicacao-de-modelos.md) | Gates, promoção, release, rollback e revogação. |
+| [releases.md](releases.md) | Política de versões, tags, artefatos e suporte. |
 | [retreinamento-e-recalibracao.md](retreinamento-e-recalibracao.md) | Sinais, cadência e procedimentos de reanálise. |
 | [runbooks.md](runbooks.md) | Procedimentos operacionais passo a passo. |
 | [testes.md](testes.md) | Suítes, convenções e cobertura das exigências. |
@@ -40,3 +41,4 @@
 | [013](adr/013-atualizacao-atomica-pwa.md) | Atualização atômica do modelo no PWA. |
 | [014](adr/014-ponto-no-tempo-estrito.md) | Ponto-in-tempo estrito com purga temporal. |
 | [015](adr/015-estado-json-auditoria.md) | Registro JSON com auditoria JSONL. |
+| [016](adr/016-governanca-e-qualidade.md) | Governança do repositório, portões de qualidade e fluxo de release. |
