@@ -55,6 +55,7 @@ dev = [
   "ruff==0.17.1",
   "mypy==2.4.0",
   "pre-commit==4.7.0",
+  "build==1.6.1",
 ]
 
 [project.scripts]
@@ -62,6 +63,8 @@ frequencia = "frequencia.cli.app:executar"
 
 [project.urls]
 Repositorio = "https://github.com/eemtijca/frequencia"
+Issues = "https://github.com/eemtijca/frequencia/issues"
+Changelog = "https://github.com/eemtijca/frequencia/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/frequencia"]

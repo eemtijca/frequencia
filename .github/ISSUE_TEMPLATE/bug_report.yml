@@ -1,0 +1,134 @@
+name: Bug
+description: Reporte um comportamento incorreto.
+title: "[Bug]: "
+labels:
+  - bug
+  - triagem
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar. Não inclua dados reais de alunos, responsáveis ou professores.
+  - type: checkboxes
+    id: busca
+    attributes:
+      label: Antes de abrir
+      options:
+        - label: Procurei issues abertas e fechadas e não encontrei uma equivalente.
+          required: true
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição
+      description: O que aconteceu?
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamento esperado
+      description: O que deveria acontecer?
+    validations:
+      required: true
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Execute ...
+        2. Observe ...
+        3. Confira ...
+    validations:
+      required: true
+  - type: dropdown
+    id: frequencia
+    attributes:
+      label: Frequência
+      description: O problema acontece sempre ou de forma intermitente?
+      options:
+        - Sempre
+        - Às vezes
+        - Uma vez
+        - Não sei
+    validations:
+      required: true
+  - type: dropdown
+    id: impacto
+    attributes:
+      label: Impacto
+      description: Quanto o problema atrapalha o uso?
+      options:
+        - Bloqueia o uso
+        - Atrapalha o uso
+        - Incômodo pequeno
+        - Não sei
+    validations:
+      required: true
+  - type: input
+    id: versao
+    attributes:
+      label: Versão ou commit
+      placeholder: v0.1.0 ou hash do commit
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área afetada
+      options:
+        - Dados
+        - Features
+        - Treino e pipelines
+        - Modelos e registro
+        - Exportação e integração
+        - Monitoramento
+        - Privacidade
+        - CLI
+        - Painel
+        - Infraestrutura e governança
+        - Não se aplica
+    validations:
+      required: false
+  - type: dropdown
+    id: papel
+    attributes:
+      label: Papel afetado
+      options:
+        - Observador
+        - Cientista
+        - Engenheiro
+        - Aprovador
+        - Não se aplica
+    validations:
+      required: false
+  - type: textarea
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Sistema, Python, Node e Docker, sem dados sensíveis.
+      render: markdown
+    validations:
+      required: false
+  - type: textarea
+    id: evidencias
+    attributes:
+      label: Evidências
+      description: Logs e capturas relevantes, sem segredos nem dados reais.
+      render: markdown
+    validations:
+      required: false
+  - type: input
+    id: relacao
+    attributes:
+      label: Issue relacionada
+      description: Número de uma issue relacionada, quando houver.
+      placeholder: "#123"
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacidade
+    attributes:
+      label: Privacidade
+      options:
+        - label: Confirmei que não incluí segredos, credenciais nem dados reais de alunos, responsáveis ou professores.
+          required: true

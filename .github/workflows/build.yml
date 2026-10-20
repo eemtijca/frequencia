@@ -1,0 +1,62 @@
+# Empacotamento: wheel, sdist, conteúdo e instalação limpa.
+name: Build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pacote:
+    name: Pacote Python
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Preparar Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Instalar ferramentas de build
+        run: |
+          python -m pip install --upgrade pip
+          pip install build==1.6.1
+
+      - name: Construir wheel e sdist
+        run: python -m build
+
+      - name: Conferir o conteúdo do wheel
+        run: |
+          python - <<'PY'
+          import glob
+          import zipfile
+
+          arquivos = glob.glob("dist/*.whl")
+          if len(arquivos) != 1:
+              raise SystemExit("Esperava um wheel em dist/.")
+          with zipfile.ZipFile(arquivos[0]) as pacote:
+              nomes = pacote.namelist()
+          if not any(nome.startswith("frequencia/") for nome in nomes):
+              raise SystemExit("O wheel não contém o pacote frequencia.")
+          if not any(nome.endswith("entry_points.txt") for nome in nomes):
+              raise SystemExit("O wheel não contém os entry points.")
+          print(f"Wheel válido: {arquivos[0]}")
+          PY
+
+      - name: Instalar o wheel em ambiente limpo
+        run: |
+          python -m venv /tmp/venv-pacote
+          /tmp/venv-pacote/bin/python -m pip install --upgrade pip
+          /tmp/venv-pacote/bin/python -m pip install dist/*.whl
+          /tmp/venv-pacote/bin/frequencia --help > /dev/null

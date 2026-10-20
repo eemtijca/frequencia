@@ -1,0 +1,88 @@
+# Aplica etiquetas de área aos pull requests conforme os caminhos alterados.
+"area: dados":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/dados/**"
+          - "dados/**"
+          - "docs/modelo-de-dados.md"
+          - "docs/guia-de-dados-mec.md"
+
+"area: features":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/features/**"
+          - "docs/dicionario-de-features.md"
+
+"area: treino":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/pipelines/**"
+          - "config/**"
+
+"area: modelos":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/modelos/**"
+          - "projetos/**"
+          - "docs/catalogo-de-modelos.md"
+          - "docs/publicacao-de-modelos.md"
+
+"area: exportacao":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/distribuicao/**"
+          - "src/frequencia/integracao/**"
+          - "docs/contrato-de-inferencia.md"
+          - "docs/contrato-de-manifesto.md"
+          - "docs/guia-de-exportacao.md"
+
+"area: monitoramento":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/monitoramento/**"
+          - "docs/retreinamento-e-recalibracao.md"
+
+"area: privacidade":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/privacidade/**"
+          - "docs/privacidade-lgpd.md"
+
+"area: cli":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/cli/**"
+
+"area: painel":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/frequencia/web/**"
+
+"area: infra":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - ".editorconfig"
+          - ".dockerignore"
+          - ".env.example"
+          - ".gitignore"
+          - ".pre-commit-config.yaml"
+          - "src/frequencia/infra/**"
+          - "tests/**"
+          - "scripts/**"
+          - "docs/adr/**"
+          - "docs/arquitetura.md"
+          - "docs/runbooks.md"
+          - "docs/testes.md"
+          - "docs/releases.md"
+          - "AGENTS.md"
+          - "CONTRIBUTING.md"
+          - "CODE_OF_CONDUCT.md"
+          - "SECURITY.md"
+          - "README.md"
+          - "CHANGELOG.md"
+          - "INSTRUCOES.md"
+          - "Makefile"
+          - "pyproject.toml"
+          - "Dockerfile"
+          - "docker-compose.yml"

@@ -1,5 +1,11 @@
 # FrequencIA
 
+[![Qualidade](https://github.com/eemtijca/frequencia/actions/workflows/qualidade.yml/badge.svg)](https://github.com/eemtijca/frequencia/actions/workflows/qualidade.yml)
+[![Testes](https://github.com/eemtijca/frequencia/actions/workflows/testes.yml/badge.svg)](https://github.com/eemtijca/frequencia/actions/workflows/testes.yml)
+[![Build](https://github.com/eemtijca/frequencia/actions/workflows/build.yml/badge.svg)](https://github.com/eemtijca/frequencia/actions/workflows/build.yml)
+[![CodeQL](https://github.com/eemtijca/frequencia/actions/workflows/codeql.yml/badge.svg)](https://github.com/eemtijca/frequencia/actions/workflows/codeql.yml)
+[![Licença](https://img.shields.io/github/license/eemtijca/frequencia)](LICENSE)
+
 Motor científico do FrequenciApp: treina, avalia, empacota e publica modelos leves de risco de infrequência escolar para inferência local no navegador. Mobile-first, sem ruído e com privacidade por padrão, herdando o estilo e as convenções do [FrequenciApp](https://github.com/eemtijca/frequenciapp).
 
 O primeiro modelo estima, para cada estudante, a probabilidade de acumular pelo menos duas faltas nos próximos sete dias letivos. A previsão vira um indicador de apoio no painel da coordenação: nunca uma decisão automática, sempre sujeita a revisão humana. O artefato publicado é um arquivo JavaScript puro de poucos kilobytes, com calibração, intervalos de confiança, estados de confiança e histerese embutidos, que roda inteiramente no PWA, offline, em celular modesto.
@@ -18,6 +24,7 @@ O primeiro modelo estima, para cada estudante, a probabilidade de acumular pelo 
 - [Privacidade](#privacidade)
 - [Segurança](#segurança)
 - [Documentação](#documentação)
+- [Governança](#governança)
 - [Contribuindo](#contribuindo)
 - [Suporte](#suporte)
 - [Créditos](#créditos)
@@ -106,6 +113,9 @@ As camadas, o fluxo completo e o mapeamento entre responsabilidades e pastas est
 | `make test` | Suíte pytest com 68 testes, incluindo paridade Python e Node. |
 | `make lint` | ruff no código-fonte e nos testes. |
 | `make tipo` | mypy nos módulos do pacote. |
+| `make formato-check` | Confere a formatação sem alterar arquivos. |
+| `make dicionario` | Regenera o dicionário de features. |
+| `make etiquetas` | Sincroniza as etiquetas do GitHub com o catálogo. |
 
 A convenção das suítes está em [docs/testes.md](docs/testes.md) e a guarda editorial roda junto da suíte, herdando o padrão de texto do FrequenciApp.
 
@@ -125,7 +135,7 @@ Dados pessoais reais de alunos não entram no repositório, nos artefatos, nos l
 
 ## Segurança
 
-Vulnerabilidades são reportadas em canal privado, nunca em issue pública. A pipeline valida esquemas antes de qualquer ingestão, registra hash e licença de cada importação e traduz toda falha para português claro. A política completa está em [SECURITY.md](SECURITY.md).
+Vulnerabilidades são reportadas em canal privado, nunca em issue pública. Use o [advisory privado do GitHub](https://github.com/eemtijca/frequencia/security/advisories/new) ou o canal indicado no perfil do repositório. A pipeline valida esquemas antes de qualquer ingestão, registra hash e licença de cada importação e traduz toda falha para português claro. O repositório usa CodeQL, secret scanning e Dependabot com security updates. A política completa está em [SECURITY.md](SECURITY.md).
 
 ## Documentação
 
@@ -141,15 +151,29 @@ Vulnerabilidades são reportadas em canal privado, nunca em issue pública. A pi
 | [docs/mlops.md](docs/mlops.md) | Como treinar, avaliar, calibrar e publicar. |
 | [docs/privacidade-lgpd.md](docs/privacidade-lgpd.md) | Dados tratados, bases legais e direitos do titular. |
 | [docs/integracao-frequenciapp.md](docs/integracao-frequenciapp.md) | Mapa de features, feature flags e vocabulário aprovado. |
+| [docs/releases.md](docs/releases.md) | Política de versões, tags, artefatos e suporte. |
 | [docs/adr/](docs/adr/) | Decisões de arquitetura registradas. |
+
+## Governança
+
+O projeto segue o modelo de governança do FrequenciApp, adaptado ao stack Python e ao ciclo de MLOps:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): issues, etiquetas, branches, commits, pull requests, testes, documentação e releases.
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): norma de convivência da comunidade.
+- [SECURITY.md](SECURITY.md): canal privado, práticas adotadas e limitações.
+- [AGENTS.md](AGENTS.md): regras para agentes de IA e para o fluxo de mudanças.
+- [docs/releases.md](docs/releases.md): versionamento, tags e artefatos publicados.
+- [docs/adr/](docs/adr/): decisões de arquitetura registradas.
+
+A `main` é protegida por rulesets: pull request obrigatório, checks verdes, revisão de CODEOWNERS, conversas resolvidas e squash. As tags `v*` são imutáveis.
 
 ## Contribuindo
 
-Leia o [CONTRIBUTING.md](CONTRIBUTING.md) antes de propor mudanças. Commits seguem Conventional Commits em português, a guarda editorial reprova travessão, aspas curvas e setas, e decisões estruturais ganham ADR. Agentes de IA seguem o [AGENTS.md](AGENTS.md).
+Leia o [CONTRIBUTING.md](CONTRIBUTING.md) antes de propor mudanças. Toda issue e todo pull request recebem etiqueta de tipo e de área; o catálogo fica em `.github/labels.json` e é sincronizado com `make etiquetas`. Commits seguem Conventional Commits em português, a guarda editorial reprova travessão, aspas curvas e setas, e decisões estruturais ganham ADR. Agentes de IA seguem o [AGENTS.md](AGENTS.md).
 
 ## Suporte
 
-Dúvidas e problemas são bem-vindos nas issues do repositório. Para vulnerabilidades, use o canal privado descrito no [SECURITY.md](SECURITY.md).
+Dúvidas e problemas são bem-vindos nas issues do repositório. A triagem acontece em até 7 dias. Para vulnerabilidades, use o canal privado descrito no [SECURITY.md](SECURITY.md); para conduta, o [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Créditos
 

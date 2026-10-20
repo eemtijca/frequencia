@@ -18,3 +18,11 @@ SECURITY.md
 AGENTS.md
 .pre-commit-config.yaml
 docker-compose.yml
+.github
+dist
+build
+*.egg-info
+.tox
+.nox
+.editorconfig
+.pre-commit-config.yaml

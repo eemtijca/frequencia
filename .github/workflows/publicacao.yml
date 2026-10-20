@@ -1,0 +1,148 @@
+# Publica o pacote e a imagem de runtime em release estável ou por dispatch.
+name: Publicação
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      versao:
+        description: Tag da release, como v1.0.0
+        required: true
+        type: string
+
+concurrency:
+  group: publicacao-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    name: Validar a versão
+    if: github.event_name != 'release' || github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      versao: ${{ steps.versao.outputs.valor }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.versao }}
+
+      - name: Conferir a tag com o pyproject.toml
+        id: versao
+        shell: bash
+        run: |
+          tag="${{ github.event.release.tag_name || inputs.versao }}"
+          versao="$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          print(tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
+          PY
+          )"
+          if [ "v$versao" != "$tag" ]; then
+            echo "A tag $tag não corresponde à versão $versao do pyproject.toml." >&2
+            exit 1
+          fi
+          echo "valor=$tag" >> "$GITHUB_OUTPUT"
+
+  pacote:
+    name: Wheel e sdist
+    needs: validar
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.validar.outputs.versao }}
+
+      - name: Preparar Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Construir os artefatos
+        run: |
+          python -m pip install --upgrade pip
+          pip install build==1.6.1
+          python -m build
+
+      - name: Conferir o wheel
+        run: |
+          python - <<'PY'
+          import glob
+          import zipfile
+
+          arquivos = glob.glob("dist/*.whl")
+          if len(arquivos) != 1:
+              raise SystemExit("Esperava um wheel em dist/.")
+          with zipfile.ZipFile(arquivos[0]) as pacote:
+              nomes = pacote.namelist()
+          if not any(nome.startswith("frequencia/") for nome in nomes):
+              raise SystemExit("O wheel não contém o pacote frequencia.")
+          print(f"Wheel válido: {arquivos[0]}")
+          PY
+
+      - name: Anexar os artefatos à release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ needs.validar.outputs.versao }}" dist/* --clobber
+
+  imagem:
+    name: Imagem de runtime
+    needs: validar
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.validar.outputs.versao }}
+
+      - name: Preparar o Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Entrar no GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Definir as tags e os rótulos
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ inputs.versao }},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=sha
+          flavor: latest=auto
+
+      - name: Construir e publicar
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          target: runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

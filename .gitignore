@@ -14,3 +14,14 @@ htmlcov/
 .env
 *.log
 dados/sinteticos/perfil-*/
+
+# Artefatos de build e empacotamento
+dist/
+build/
+*.egg-info/
+.eggs/
+.tox/
+.nox/
+coverage.xml
+.coverage.*
+.dvc/tmp/

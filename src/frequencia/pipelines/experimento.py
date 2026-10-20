@@ -379,9 +379,7 @@ def _executar_exportacao(
         "dataset": {
             "identificador": pasta.name,
             "linhas": int(dados.height),
-            "taxa_rotulo": float(
-                dados.select(pl.col("rotulo").cast(pl.Float64).mean()).item(0, 0) or 0
-            ),
+            "taxa_rotulo": float(dados.select(pl.col("rotulo").cast(pl.Float64).mean()).item(0, 0) or 0),
         },
         "metricas": resultado_avaliacao["resumo"]["metricas"],
         "limitacoes": [

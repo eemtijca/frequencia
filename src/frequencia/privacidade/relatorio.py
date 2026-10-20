@@ -57,9 +57,7 @@ def gerar_relatorio_risco(tabelas: dict[str, pl.DataFrame], *, base_legal: str =
             "Remover ou pseudonimizar os campos de texto com dados pessoais antes do treino."
         )
     if identificadores:
-        recomendacoes.append(
-            "Excluir colunas identificadoras diretas (CPF, telefone, e-mail, matrícula)."
-        )
+        recomendacoes.append("Excluir colunas identificadoras diretas (CPF, telefone, e-mail, matrícula).")
     if not base_legal:
         recomendacoes.append("Registrar a base legal do tratamento junto à escola controladora.")
     return {
