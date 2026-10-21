@@ -196,3 +196,31 @@ def test_limiar_e_histerese_no_pacote(experimento_completo: Path) -> None:
     # Com o limiar derivado da taxa-alvo, a sequência precisa exercitar a
     # histerese de fato: algum dia liga o alerta.
     assert any(em_alerta for em_alerta, _ in esperados), "nenhum caso cruzou o limiar de entrada"
+
+
+def test_mlflow_rastreia_o_artefato_publicado(experimento_completo: Path) -> None:
+    """O MLflow registra a run do publicado, com métricas de teste e pacote."""
+    import mlflow
+
+    from frequencia.infra import ambiente
+
+    mlflow.set_tracking_uri(ambiente.validar().mlflow_uri)
+    runs = mlflow.search_runs(
+        experiment_names=["frequencia"],
+        filter_string="tags.estagio = 'publicado' and tags.identificador = 'smoke'",
+        output_format="list",
+    )
+    assert runs, "nenhuma run do artefato publicado"
+    run = runs[0]
+    assert "teste_auc" in run.data.metrics
+    assert "gates_aprovados" in run.data.metrics
+    artefatos = {item.path for item in mlflow.MlflowClient().list_artifacts(run.info.run_id)}
+    assert {"modelo.js", "manifest.json", "gates.json"} <= artefatos
+
+
+def test_avaliacao_compara_com_o_modelo_de_referencia(experimento_completo: Path) -> None:
+    """O relatório mostra se a destilação supera o LightGBM único."""
+    relatorio = json.loads((experimento_completo / "avaliacao.json").read_text(encoding="utf-8"))
+    comparacao = relatorio["comparacao_referencia"]
+    assert comparacao["avaliado"]
+    assert 0 < comparacao["auc_referencia"] < 1

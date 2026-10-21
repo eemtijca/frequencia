@@ -290,7 +290,30 @@ def _registrar_mlflow(
     dataset: str,
     alvo_modelo: Path,
 ) -> str:
-    """Registra a execução no MLflow local; devolve o identificador da run."""
+    """Registra a execução do treino no MLflow local; devolve a run."""
+    return registrar_execucao_mlflow(
+        identificador,
+        parametros={**parametros, "semente": semente, "dataset": dataset},
+        metricas=metricas,
+        artefatos=[alvo_modelo],
+        estagio="treino",
+    )
+
+
+def registrar_execucao_mlflow(
+    nome: str,
+    *,
+    parametros: dict,
+    metricas: dict,
+    artefatos: list[Path],
+    estagio: str,
+    etiquetas: dict | None = None,
+) -> str:
+    """Registra uma execução no MLflow do workspace; devolve o id da run.
+
+    Falha de rastreamento não interrompe o ciclo: vira aviso no log e a run
+    volta como "sem-rastreamento".
+    """
     import mlflow
 
     from frequencia.infra import ambiente
@@ -310,17 +333,20 @@ def _registrar_mlflow(
             else:
                 mlflow.create_experiment("frequencia")
         mlflow.set_experiment("frequencia")
-        with mlflow.start_run(run_name=identificador) as corrida:
-            mlflow.log_params(dict(parametros))
-            mlflow.log_param("semente", semente)
-            mlflow.log_param("dataset", dataset)
-            mlflow.log_metrics(metricas)
-            mlflow.log_artifact(str(alvo_modelo))
+        with mlflow.start_run(run_name=nome) as corrida:
+            mlflow.set_tags({"estagio": estagio, **(etiquetas or {})})
+            mlflow.log_params({chave: str(valor)[:500] for chave, valor in parametros.items()})
+            mlflow.log_metrics(
+                {chave: float(valor) for chave, valor in metricas.items() if isinstance(valor, int | float)}
+            )
+            for artefato in artefatos:
+                if Path(artefato).is_file():
+                    mlflow.log_artifact(str(artefato))
             return corrida.info.run_id
     except Exception as exc:
         logs.registrar(
             "mlflow.falha",
-            estagio="treino",
+            estagio=estagio,
             nivel="aviso",
             erro=str(exc)[:200],
         )

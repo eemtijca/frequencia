@@ -49,7 +49,7 @@ Ajustada uma única vez, no conjunto de validação, sobre a saída do estudante
 
 ## Avaliação
 
-Métricas globais (AUC, AP, logloss, Brier), precisão e revocação no Top-10 diário (a capacidade real da coordenação), taxa de alerta e falsos positivos no limiar, subgrupos por série e por faixa de histórico, fairness pela dispersão de revocação e taxa de alerta, estabilidade temporal por mês, comparação com o baseline de regras e gates objetivos. Saída em avaliacao.json, relatorio-avaliacao.md e gates.json.
+Medidas no teste, sobre o preditor publicado: métricas globais (AUC, AP, logloss, Brier, ECE), precisão e revocação no Top-10 diário (a capacidade real da coordenação), taxa de alerta e falsos positivos no limiar, subgrupos por série e por faixa de histórico, fairness pela dispersão de revocação e taxa de alerta, estabilidade temporal por mês, comparação com o baseline de regras, comparação com o LightGBM único da etapa de treino (o ensemble e a destilação precisam superá-lo para justificar a complexidade), conjuntos conformes com cobertura por classe, partida a frio nos alunos reservados e gates objetivos. Ao fim do ciclo, uma run do MLflow com a etiqueta `estagio=publicado` registra o estudante calibrado: parâmetros, métricas de teste e de partida a frio, vereditos dos gates, `modelo.js`, `manifest.json` e relatórios. A run da etapa de treino registra só o modelo de referência. Saída em avaliacao.json, relatorio-avaliacao.md e gates.json.
 
 ## Exportação
 

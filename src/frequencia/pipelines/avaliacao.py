@@ -326,6 +326,7 @@ def gerar_relatorio_markdown(relatorio: dict, destino) -> str:
         "por_faixa_historico",
         "estabilidade_temporal",
         "comparacao_baseline",
+        "comparacao_referencia",
         "calibracao",
         "conformal",
         "fairness",

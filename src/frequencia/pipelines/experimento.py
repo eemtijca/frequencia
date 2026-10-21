@@ -174,6 +174,15 @@ def executar(
         saida.write("\n")
     # A promoção a candidato lê o veredito do registro (ADR-018).
     estado_infra.registrar_gates("risco-infrequencia", resultado_pacote["resumo"]["versao_modelo"], veredito)
+    resumo["run_mlflow_publicado"] = _registrar_mlflow_publicado(
+        identificador,
+        estado["config"],
+        pasta,
+        resultado_calibracao,
+        resultado_avaliacao,
+        resultado_pacote,
+        veredito,
+    )
 
     logs.registrar(
         "experimentos.ciclo",
@@ -183,6 +192,59 @@ def executar(
         detalhado=detalhado,
     )
     return resumo
+
+
+def _registrar_mlflow_publicado(
+    identificador: str,
+    config: dict,
+    pasta: Path,
+    resultado_calibracao: dict,
+    resultado_avaliacao: dict,
+    resultado_pacote: dict,
+    veredito: dict,
+) -> str:
+    """Rastreia no MLflow o artefato que vai para o navegador.
+
+    A run da etapa de treino registra o modelo de referência, que não é
+    publicado; esta run registra o estudante calibrado, as métricas do teste
+    sobre o preditor publicado, os gates e os arquivos do pacote.
+    """
+    relatorio = resultado_avaliacao["resumo"]
+    calibracao = resultado_calibracao["resumo"]
+    metricas = {f"teste_{chave}": valor for chave, valor in relatorio.get("metricas", {}).items()}
+    frio = relatorio.get("partida_a_frio") or {}
+    metricas.update({f"frio_{chave}": valor for chave, valor in (frio.get("metricas") or {}).items()})
+    conformal = relatorio.get("conformal") or {}
+    for chave in ("cobertura_minima_por_classe", "fracao_conjuntos_unitarios"):
+        if conformal.get(chave) is not None:
+            metricas[f"conformal_{chave}"] = conformal[chave]
+    metricas.update({f"gate_{nome}": float(ok) for nome, ok in veredito["vereditos"].items()})
+    metricas["gates_aprovados"] = float(veredito["aprovado"])
+    parametros = {
+        **{f"config_{chave}": valor for chave, valor in config.items()},
+        "a_platt": calibracao.get("a_platt"),
+        "b_platt": calibracao.get("b_platt"),
+        "lambda_platt": calibracao.get("lambda_platt"),
+        "limiar_alerta_entrada": calibracao.get("limiares_alerta", {}).get("entrada"),
+        "limiar_alerta_saida": calibracao.get("limiares_alerta", {}).get("saida"),
+        "versao_modelo": resultado_pacote["resumo"]["versao_modelo"],
+    }
+    pasta_pacote = Path(resultado_pacote["resumo"]["pasta"])
+    artefatos = [
+        pasta_pacote / "modelo.js",
+        pasta_pacote / "manifest.json",
+        pasta / "avaliacao.json",
+        pasta / "calibracao.json",
+        pasta / "gates.json",
+    ]
+    return treino_mod.registrar_execucao_mlflow(
+        f"{identificador}-publicado",
+        parametros=parametros,
+        metricas=metricas,
+        artefatos=artefatos,
+        estagio="publicado",
+        etiquetas={"identificador": identificador},
+    )
 
 
 def _executar_treino(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, detalhado: bool):
@@ -359,6 +421,7 @@ def _executar_avaliacao(
     )
     relatorio["curva_aprendizado"] = ajuste_dict.get("curva_aprendizado", [])
     relatorio["partida_a_frio"] = _avaliar_partida_a_frio(dados, estudante, ajuste)
+    relatorio["comparacao_referencia"] = _comparar_referencia(pasta, x_teste, y_teste, relatorio)
     corpo = {"resumo": relatorio, "relatorio": relatorio}
     with (pasta / "avaliacao.json").open("w", encoding="utf-8") as saida:
         json.dump(relatorio, saida, ensure_ascii=False, indent=2, sort_keys=True)
@@ -371,6 +434,27 @@ def _executar_avaliacao(
         detalhado=detalhado,
     )
     return corpo
+
+
+def _comparar_referencia(pasta: Path, x_teste: np.ndarray, y_teste: np.ndarray, relatorio: dict) -> dict:
+    """Compara o publicado com o LightGBM único da etapa de treino.
+
+    Se o estudante destilado não supera um modelo único treinado nos mesmos
+    dados, o ensemble e a destilação não estão pagando a própria complexidade.
+    É informação para a revisão, não gate.
+    """
+    from sklearn.metrics import roc_auc_score
+
+    try:
+        referencia = treino_mod.carregar_modelo(pasta)
+    except Exception:
+        return {"avaliado": False, "motivo": "modelo de referência ausente"}
+    auc = float(roc_auc_score(y_teste, referencia.predict_proba(x_teste)[:, 1]))
+    return {
+        "avaliado": True,
+        "auc_referencia": round(auc, 4),
+        "ganho_absoluto": round(relatorio["metricas"]["auc"] - auc, 4),
+    }
 
 
 def _avaliar_partida_a_frio(dados: pl.DataFrame, estudante, ajuste: dict) -> dict:
