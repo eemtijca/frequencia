@@ -230,3 +230,26 @@ def test_dobras_do_ensemble_purgam_o_horizonte() -> None:
     for treino, validacao in dobras:
         assert dias.index(validacao[0]) - dias.index(treino[-1]) > 7
     assert _dobras_temporais(dias, 3, purga=0)[0][0][-1] == dias[6]
+
+
+def test_gates_reprovam_medida_ausente() -> None:
+    """Medida faltando no relatório reprova o gate em vez de aprová-lo."""
+    from frequencia.pipelines import avaliacao
+
+    veredito = avaliacao.validar_gates({"metricas": {"auc": 0.9, "taxa_alerta": 0.1}})
+    assert veredito["vereditos"]["auc"]
+    for gate in ("ece", "cobertura_conformal", "melhora_sobre_baseline"):
+        assert veredito["vereditos"][gate] is False, gate
+    assert not veredito["aprovado"]
+
+
+def test_avaliacao_mede_ece_no_conjunto_avaliado() -> None:
+    """O ECE do gate vem das previsões avaliadas, não do ajuste."""
+    from frequencia.pipelines import avaliacao
+
+    rng = np.random.default_rng(2)
+    p = rng.uniform(0, 1, 4000)
+    y = rng.binomial(1, np.clip(p * 0.5, 0, 1))
+    relatorio = avaliacao.avaliar(p, y, ajuste_calibracao={"ece_depois": 0.01})
+    assert relatorio["calibracao"]["ece"] > 0.15
+    assert relatorio["calibracao"]["ece_no_ajuste"] == 0.01

@@ -58,6 +58,7 @@ def avaliar(
         "ap": round(float(average_precision_score(y, p)), 4),
         "logloss": round(float(log_loss(y, p, labels=[0, 1])), 4),
         "brier": round(float(brier_score_loss(y, p)), 4),
+        "ece": round(erro_calibracao_esperado(p, y), 4),
     }
     metricas.update(_precisao_top_k(p, y, k_top, dias=dias))
     metricas.update(_taxa_alerta(p, y))
@@ -78,13 +79,23 @@ def avaliar(
             "auc_baseline": round(auc_baseline, 4),
             "ganho_absoluto": round(metricas["auc"] - auc_baseline, 4),
         }
+    # O ECE do gate é o do conjunto avaliado; o da calibração fica como
+    # referência, porque foi medido nos dados em que o Platt foi ajustado.
+    relatorio["calibracao"] = {"ece": metricas["ece"]}
     if ajuste_calibracao is not None:
-        relatorio["calibracao"] = {"ece": ajuste_calibracao.get("ece_depois")}
+        relatorio["calibracao"]["ece_no_ajuste"] = ajuste_calibracao.get("ece_depois")
     if conformal is not None:
         relatorio["conformal"] = conformal
     if series is not None:
         relatorio["fairness"] = _fairness(y, p, series, metricas)
     return relatorio
+
+
+def erro_calibracao_esperado(probabilidades: np.ndarray, rotulos: np.ndarray, bins: int = 10) -> float:
+    """ECE com bins de igual largura, incluindo p exatamente zero no primeiro."""
+    from frequencia.pipelines.calibracao import _erro_calibracao_esperado
+
+    return _erro_calibracao_esperado(probabilidades, rotulos, bins)
 
 
 def _precisao_top_k(p: np.ndarray, y: np.ndarray, k: int, dias: list[str] | None = None) -> dict:
@@ -211,6 +222,14 @@ def _fairness(y, p, series: list[str], metricas: dict) -> dict:
     }
 
 
+def _no_maximo(valor, limite) -> bool:
+    return valor is not None and float(valor) <= float(limite)
+
+
+def _no_minimo(valor, limite) -> bool:
+    return valor is not None and float(valor) >= float(limite)
+
+
 def validar_gates(
     relatorio: dict,
     *,
@@ -218,26 +237,35 @@ def validar_gates(
     latencia_ms: float | None = None,
     gates: dict | None = None,
 ) -> dict:
-    """Aplica os gates mínimos de promoção e devolve o veredito por gate."""
+    """Aplica os gates mínimos de promoção e devolve o veredito por gate.
+
+    Todo gate reprova quando a medida está ausente: valor faltando é falha
+    do ciclo, não aprovação. Tamanho e latência só entram quando informados.
+    """
     limiares = dict(GATES_PADRAO)
     if gates:
         limiares.update(gates)
     metricas = relatorio.get("metricas", {})
     comparacao = relatorio.get("comparacao_baseline", {})
     calibracao = relatorio.get("calibracao", {})
+    conformal = relatorio.get("conformal", {})
     vereditos = {
-        "auc": metricas.get("auc", 0.0) >= limiares["auc_minimo"],
-        "ece": (calibracao.get("ece") or 0.0) <= limiares["ece_maximo"],
-        "cobertura_conformal": (relatorio.get("conformal", {}).get("cobertura_minima_por_classe") or 0.0)
-        >= limiares["cobertura_conformal_minima"],
-        "taxa_alerta": metricas.get("taxa_alerta", 1.0) <= limiares["taxa_alerta_maxima"],
-        "melhora_sobre_baseline": comparacao.get("ganho_absoluto", 0.0)
-        >= limiares["melhora_sobre_baseline_minima"],
+        "auc": _no_minimo(metricas.get("auc"), limiares["auc_minimo"]),
+        "ece": _no_maximo(calibracao.get("ece"), limiares["ece_maximo"]),
+        "cobertura_conformal": _no_minimo(
+            conformal.get("cobertura_minima_por_classe"), limiares["cobertura_conformal_minima"]
+        ),
+        "taxa_alerta": _no_maximo(metricas.get("taxa_alerta"), limiares["taxa_alerta_maxima"]),
+        "melhora_sobre_baseline": _no_minimo(
+            comparacao.get("ganho_absoluto"), limiares["melhora_sobre_baseline_minima"]
+        ),
     }
     if tamanho_pacote_bytes is not None:
-        vereditos["tamanho_pacote"] = tamanho_pacote_bytes <= limiares["tamanho_pacote_maximo_bytes"]
+        vereditos["tamanho_pacote"] = _no_maximo(
+            tamanho_pacote_bytes, limiares["tamanho_pacote_maximo_bytes"]
+        )
     if latencia_ms is not None:
-        vereditos["latencia"] = latencia_ms <= limiares["latencia_maxima_ms"]
+        vereditos["latencia"] = _no_maximo(latencia_ms, limiares["latencia_maxima_ms"])
     return {
         "gates": limiares,
         "vereditos": vereditos,

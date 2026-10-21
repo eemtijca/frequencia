@@ -114,6 +114,8 @@ def _erro_calibracao_esperado(probabilidades: np.ndarray, rotulos: np.ndarray, b
     erro = 0.0
     for indice in range(bins):
         mascara = (p > bordas[indice]) & (p <= bordas[indice + 1])
+        if indice == 0:
+            mascara |= p == 0.0
         if mascara.sum() == 0:
             continue
         media_p = p[mascara].mean()
