@@ -12,17 +12,24 @@ Quando e como retreinar, recalibrar e desativar. O modelo tem prazo de validade 
 | Taxa de descarte | Feedback acima de 0,50 | Revisar limiares e mensagens com a coordenação |
 | Mudança de contrato | Nova feature ou novo rótulo | Novo experimento com versão de contrato incrementada |
 
-O relatório de saúde (`monitoramento relatorio-saude`) resume os sinais e recomenda a ação; a página Monitoramento do painel mostra o mesmo conteúdo.
+O relatório de saúde (`monitoramento relatorio-saude`) resume os sinais e recomenda a ação; a página Monitoramento do painel mostra o mesmo conteúdo. Quando a decisão for de retreinamento ou mudança de contrato, registre a hipótese e o protocolo conforme [ciencia-e-inovacao.md](ciencia-e-inovacao.md).
 
 ## Recalibração leve
 
-Quando o modelo segue útil mas a escala deslocou (sazonalidade nova, mudança de catálogo de justificativas), recalibrar basta:
+Quando o modelo segue útil mas a escala deslocou (sazonalidade nova, mudança de catálogo de justificativas), recalibrar basta. Os comandos usam Docker; no fallback venv, troque o prefixo Docker por `frequencia`.
 
 ```bash
-frequencia monitoramento recalibrar var/artefatos/experimentos/<experimento>
+docker compose --profile cli run --rm cli frequencia monitoramento recalibrar \
+  var/artefatos/experimentos/<experimento>
+
+docker compose --profile cli run --rm cli frequencia avaliacao validar-gates \
+  var/artefatos/experimentos/<experimento>
+
+docker compose --profile cli run --rm cli frequencia empacotamento montar \
+  var/artefatos/experimentos/<experimento>
 ```
 
-A etapa recalcula Platt e os quantis conformes sobre o OOF existente e atualiza calibracao.json. Uma nova exportação do pacote (caminho `empacotamento montar`) publica a versão recalibrada com o mesmo estudante.
+A etapa recalcula Platt e os quantis conformes sobre o OOF existente e atualiza calibracao.json. Reavalie os gates e reexporte o pacote antes de publicar. O `empacotamento montar` usa cartão mínimo e sem contexto MEC; confira o conteúdo gerado.
 
 ## Retreinamento completo
 
@@ -31,14 +38,21 @@ A etapa recalcula Platt e os quantis conformes sobre o OOF existente e atualiza 
 3. Executar o ciclo completo com identificador novo:
 
 ```bash
-frequencia experimentos executar var/dados/processados/<novo> --identificador retreino-<mes>
+docker compose --profile cli run --rm cli frequencia experimentos executar \
+  var/dados/processados/<novo> \
+  --identificador retreino-<mes> \
+  --versao-modelo <versao-modelo>
 ```
 
 4. Comparar com a versão atual:
 
 ```bash
-frequencia registro comparar risco-infrequencia <atual> <nova>
-frequencia experimentos comparar <pasta-atual> <pasta-nova>
+docker compose --profile cli run --rm -T --no-deps cli frequencia registro comparar \
+  risco-infrequencia <atual> <nova>
+
+docker compose --profile cli run --rm -T --no-deps cli frequencia experimentos comparar \
+  var/artefatos/experimentos/<pasta-atual> \
+  var/artefatos/experimentos/<pasta-nova>
 ```
 
 5. Promover, publicar e planejar o rollback para a versão anterior, mantendo-a no canal até a nova mostrar estabilidade por duas semanas de feedback.
@@ -46,7 +60,9 @@ frequencia experimentos comparar <pasta-atual> <pasta-nova>
 ## Importar feedback agregado
 
 ```bash
-frequencia monitoramento importar-feedback feedback.json
+docker compose --profile cli run --rm cli frequencia monitoramento importar-feedback \
+  feedback.json \
+  --fonte painel
 ```
 
 O arquivo carrega dias, acuracia_observada e taxa_descarte por dia, em contagens agregadas. Nenhum registro individual entra: o vocabulário do arquivo é o contrato mínimo.

@@ -15,59 +15,92 @@ Guia de desenvolvimento do FrequencIA: como preparar o ambiente, abrir issues, p
 
 ## Ambiente de desenvolvimento
 
-Pré-requisitos: Python 3.12 e Node.js 20 ou superior. O Node executa a paridade entre a previsão Python e o `modelo.js`. O caminho principal é o venv; o Docker Compose é o caminho de validação em container.
+Pré-requisitos: Docker com Compose v2. Python 3.12 e Node.js 20 ou superior são necessários apenas no caminho venv de fallback. O host com Python 3.15 não é suportado.
+
+O caminho padrão é Docker:
+
+```bash
+docker compose up --build -d
+docker compose --profile ciclo up smoke
+docker compose --profile cli run --rm -T --no-deps cli python -m pytest tests -q
+```
+
+O painel fica em http://localhost:8501 e o MLflow em http://localhost:5000.
+
+O fallback com venv existe apenas para ambientes sem Docker:
 
 ```bash
 bash scripts/setup.sh
-cp .env.example .env
+source .venv/bin/activate
 bash scripts/smoke.sh
 streamlit run src/frequencia/web/app.py
 ```
 
-O `setup.sh` cria o `.venv` com Python 3.12 e instala as dependências fixadas do `pyproject.toml`. O `smoke.sh` gera dados sintéticos, executa o ciclo completo, confere os gates, valida a paridade e roda a suíte.
+O `setup.sh` exige Python 3.12 e instala as dependências fixadas. O `smoke.sh` gera dados sintéticos, executa o ciclo completo, confere os gates, valida a paridade e roda a suíte.
 
-Com Docker, os mesmos serviços sobem em containers separados:
-
-```bash
-docker compose up --build
-docker compose --profile ciclo up smoke
-docker compose down
-```
-
-O serviço `app` expõe o painel em `http://localhost:8501`, e o `mlflow` expõe o rastreamento em `http://localhost:5000`.
+O volume `dados` do Docker é separado do `var/` local do venv. Escolha um caminho e registre qual foi usado.
 
 ### Comandos úteis na raiz
 
-| Comando | Efeito |
-| --- | --- |
-| `make setup` | Cria o venv e instala as dependências. |
-| `make test` | Suíte pytest completa. |
-| `make lint` | ruff no código e nos testes. |
-| `make tipo` | mypy no pacote. |
-| `make formato` | Corrige a formatação com ruff. |
-| `make formato-check` | Confere a formatação sem alterar arquivos. |
-| `make smoke` | Ciclo completo com dados sintéticos. |
-| `make demo` | Painel de governança com dados de demonstração. |
-| `make dicionario` | Regenera o dicionário de features. |
-| `make etiquetas` | Sincroniza as etiquetas do GitHub com o catálogo. |
-| `make pacote` | Constrói wheel e sdist em `dist/`. |
-| `make limpar` | Remove caches e artefatos de execução. |
+Os alvos `make` usam Docker por padrão. Os alvos `venv-*` usam o fallback com Python 3.12.
+
+```bash
+# Docker
+make help
+make setup
+make up
+make smoke
+make test
+make lint
+make tipo
+make formato
+make formato-check
+make dicionario
+make pacote
+make down
+
+# Fallback venv
+make venv-setup
+make venv-test
+make venv-lint
+make venv-tipo
+make venv-formato-check
+make venv-smoke
+make venv-demo
+```
+
+`make etiquetas` roda no host, pois exige `gh` autenticado.
 
 ## Fluxo de contribuição e pull requests
 
 ### GitHub CLI
 
-Opere issues, pull requests, execuções de workflow e releases pelo GitHub CLI (`gh`), não pela interface web. Antes de operar, confirme a sessão com `gh auth status` (ou `gh status`) e, se não houver conexão, autentique com `gh auth login`.
+Opere issues, pull requests, execuções de workflow e releases pelo GitHub CLI (`gh`), não pela interface web. Antes de operar, confirme a sessão e autentique quando necessário. Nunca inclua segredos, credenciais ou dados de alunos em comandos, títulos, corpos ou comentários.
 
 Comandos do dia a dia:
 
-- `gh issue create`, `gh issue list` e `gh issue view` para issues.
-- `gh pr create`, `gh pr view` e `gh pr checks --watch` para pull requests.
-- `gh pr edit <número> --add-label <etiqueta>` para corrigir etiquetas.
-- `gh run list`, `gh run watch` e `gh run view --log-failed` para workflows.
-- `gh release create` e `gh release view` para releases.
+```bash
+gh auth status
+gh status
+gh auth login
+gh issue create
+gh issue list
+gh issue view
+gh pr create
+gh pr view
+gh pr checks --watch
+gh pr ready --undo
+gh pr ready
+gh pr edit <numero> --add-label <etiqueta>
+gh run list
+gh run watch
+gh run view --log-failed
+gh release create
+gh release view
+gh api <rota>
+```
 
-Ajustes de rulesets e de configurações do repositório também passam por `gh api`. Nunca inclua segredos, credenciais ou dados de alunos em comandos, títulos, corpos ou comentários.
+Ajustes de rulesets e de configurações do repositório também passam pelo GitHub CLI. Nunca inclua segredos, credenciais ou dados de alunos em comandos, títulos, corpos ou comentários.
 
 ### Issues
 
@@ -163,7 +196,7 @@ Regras:
 
 - Cada commit é atômico: contém uma única mudança lógica, completa e autossuficiente. O código compila e as verificações passam em cada commit.
 - Não misture contextos no mesmo commit, como formatação, refatoração e mudança de comportamento. Se o commit cabe em mais de um tipo, divida.
-- O histórico exposto não contém trabalho em andamento nem correção de revisão. Durante o desenvolvimento, use `git commit --fixup <commit>` e limpe a branch com `git rebase -i --autosquash` antes de publicar.
+- O histórico exposto não contém trabalho em andamento nem correção de revisão. Use commits de fixup durante o desenvolvimento e limpe a branch antes de publicar, com os comandos do bloco abaixo.
 - Todos os commits do mesmo assunto ficam em uma única branch e um único pull request.
 - Prefira mudanças pequenas e revisáveis, na linha do [Google Engineering Practices](https://google.github.io/eng-practices/review/developer/small-cls.html): cerca de 100 linhas é um tamanho razoável e 1000 é grande demais.
 - Use o corpo para explicar o porquê quando a descrição não bastar.
@@ -171,6 +204,14 @@ Regras:
 - Mudança incompatível usa `!` depois do tipo ou escopo, ou o rodapé `BREAKING CHANGE:`.
 - Commits com geração relevante por ferramenta de IA levam o rodapé `Assisted-by: ferramenta:modelo`. A responsabilidade pela mudança é de quem envia.
 - Evite commits de trabalho em andamento na `main`; o histórico da `main` vem de pull requests.
+
+```bash
+# Durante o desenvolvimento
+git commit --fixup <commit>
+
+# Antes de publicar
+git rebase -i --autosquash
+```
 
 Exemplos:
 
@@ -187,9 +228,9 @@ O sujeito da descrição é a mudança: leia `fix(calibracao): corrige ...` como
 
 Um pull request resolve um assunto e reúne todos os commits dele. Se a mudança misturar refatoração e comportamento, separe em pull requests menores. Refatorações grandes andam em pull request próprio, sem misturar com correção ou funcionalidade.
 
-Abra o pull request somente quando o trabalho estiver finalizado: verificações locais passando, título em Conventional Commits no presente do indicativo, documentação e CHANGELOG atualizados, etiquetas definidas e revisão do próprio diff feita. Não use `gh pr create --fill`, porque o corpo deve vir do template.
+Abra o pull request somente quando o trabalho estiver finalizado: verificações locais passando, título em Conventional Commits no presente do indicativo, documentação e CHANGELOG atualizados, etiquetas definidas e revisão do próprio diff feita. Não use o preenchimento automático do corpo, porque ele deve vir do template.
 
-Se o CI falhar ou surgir algo novo depois da abertura, converta o pull request para rascunho com `gh pr ready --undo`, faça os commits atômicos e rode as verificações de novo. Marque como pronto com `gh pr ready` somente com tudo verde. Enquanto o pull request estiver em rascunho, não peça revisão. Depois que a revisão começar, prefira commits novos que respondem ao feedback; se precisar reescrever a história, use `git push --force-with-lease` e explique o motivo na conversa.
+Se o CI falhar ou surgir algo novo depois da abertura, converta o pull request para rascunho, faça os commits atômicos e rode as verificações de novo. Marque como pronto somente com tudo verde. Enquanto o pull request estiver em rascunho, não peça revisão. Depois que a revisão começar, prefira commits novos que respondem ao feedback; se precisar reescrever a história, use `git push --force-with-lease` e explique o motivo na conversa.
 
 A descrição deve conter:
 
@@ -202,14 +243,24 @@ A descrição deve conter:
 
 Quando a mudança tocar dependências, workflows, privacidade, contratos de features, manifesto ou dados sensíveis, descreva o risco e como ele foi tratado.
 
-Antes de abrir, rode as verificações locais:
+Antes de abrir, rode as verificações locais no Docker:
 
 ```bash
 make formato-check
 make lint
 make tipo
 make test
-make smoke          # quando a mudança afeta dados, features, pipelines, exportação ou pacote
+make smoke
+```
+
+No fallback venv:
+
+```bash
+make venv-formato-check
+make venv-lint
+make venv-tipo
+make venv-test
+make venv-smoke
 ```
 
 Preencha o checklist do template de pull request. Ao alterar comportamento, atualize a documentação correspondente, o dicionário de features e os testes.
@@ -259,21 +310,28 @@ Mescle por squash, em um único commit por pull request. Apague a branch após o
 
 ### Formatação e análise estática
 
-O ruff cuida do estilo e do lint; o mypy cobre a tipagem. Rode `make formato` e `make lint` antes de commitar. A CI também roda `ruff format --check`, e a versão do ruff no `pyproject.toml` precisa ser a mesma do `rev` do pre-commit.
+O ruff cuida do estilo e do lint; o mypy cobre a tipagem. Rode `make formato` e `make lint` antes de commitar. Esses alvos usam Docker por padrão; `make venv-formato` e `make venv-lint` são o fallback. A CI também roda `ruff format --check`, e a versão do ruff no `pyproject.toml` precisa ser a mesma do `rev` do pre-commit.
 
 ### Contribuições assistidas por IA
 
-Ferramentas de IA são bem-vindas como apoio, mas a responsabilidade pela mudança é de quem envia, e a autoria dos commits é humana. Revise o resultado linha a linha, garanta que ele segue as convenções do repositório, rode as verificações locais e nunca cole segredos, credenciais ou dados reais em ferramentas externas, issues ou commits. Commits com geração relevante levam o rodapé `Assisted-by: ferramenta:modelo`, e o template de pull request tem a seção "Uso de IA". Agentes seguem o [AGENTS.md](AGENTS.md), com as mesmas obrigações de etiquetas, commits atômicos, um único pull request e ciclo de rascunho.
+Ferramentas de IA são bem-vindas como apoio, mas a responsabilidade pela mudança é de quem envia, e a autoria dos commits é humana. Revise o resultado linha a linha, garanta que ele segue as convenções do repositório, rode as verificações locais e nunca cole segredos, credenciais ou dados reais em ferramentas externas, issues ou commits. Commits com geração relevante levam o rodapé `Assisted-by: ferramenta:modelo`, e o template de pull request tem a seção "Uso de IA". Agentes seguem o [AGENTS.md](AGENTS.md) no desenvolvimento e o [SKILL.md](.agents/skills/frequencia/SKILL.md) na operação, com as mesmas obrigações de etiquetas, commits atômicos, um único pull request e ciclo de rascunho. O caminho padrão de execução é Docker; o venv com Python 3.12 é fallback.
 
 ## Testes e qualidade
 
-| Suíte | Requisito | Comando |
-| --- | --- | --- |
-| Unidade e contratos | Nenhum | `make test` |
-| Ciclo completo | Node 20 ou superior | `make smoke` |
-| Guarda editorial | Nenhum (roda com a unidade) | `make test` |
-| Dicionário | Nenhum | `python scripts/gerar_dicionario.py --check` |
-| Compose | Docker com Compose | `docker compose --profile ciclo up smoke` |
+Os alvos `make` usam Docker por padrão. Os alvos `venv-*` são o fallback com Python 3.12.
+
+```bash
+# Docker
+make test
+make smoke
+make dicionario-check
+docker compose --profile ciclo up smoke
+
+# Fallback venv
+make venv-test
+make venv-smoke
+make venv-dicionario-check
+```
 
 Regras:
 
@@ -281,7 +339,7 @@ Regras:
 - Nenhum teste depende de ordem de execução.
 - Ao corrigir um bug, adicione um teste que falharia antes da correção.
 - Ao adicionar texto de interface, confira que a guarda editorial passa.
-- Testes que tocam o Node pulam com aviso quando ele está ausente; a validação completa exige Node 20 ou superior.
+- Testes que tocam o Node pulam com aviso quando ele está ausente; a validação completa exige Node 20 ou superior na imagem de desenvolvimento.
 
 A convenção e a cobertura estão em [docs/testes.md](docs/testes.md).
 
@@ -301,6 +359,17 @@ Restrições de formatação:
 - Use links relativos para arquivos do repositório e mantenha o texto do link em uma única linha.
 - Use alertas (`> [!NOTE]`, `> [!WARNING]`) com parcimônia, no máximo um ou dois por documento.
 - Valide com `make formato-check` antes de enviar.
+
+### Comandos e blocos de código
+
+- Todo comando que o leitor deve executar vai em um bloco de código bash, não inline.
+- Use inline code apenas para nomes de comandos, flags, caminhos, campos e valores.
+- Cada bloco deve ser copiável, sem prompt `$`.
+- Use comentários `#` para explicar o efeito de cada comando.
+- Use `<placeholder>` para valores que o leitor precisa substituir.
+- Separe comandos de saída: `bash` para comandos e `text` para saídas.
+- No caminho Docker, use `docker compose`; no fallback, use o venv com Python 3.12.
+- ADRs históricos não são reescritos por estilo; apenas correções factuais.
 
 ### Dicionário de features
 

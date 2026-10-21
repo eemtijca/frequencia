@@ -20,14 +20,20 @@ Convenção e cobertura das suítes do FrequencIA. Toda execução cria e limpa 
 ## Execução
 
 ```bash
-python -m pytest tests -q          # suíte completa
-bash scripts/smoke.sh              # ciclo completo mais suíte
-python -m pytest tests/exportacao -q -m smoke
+# Docker, caminho padrão
+docker compose --profile cli run --rm -T --no-deps cli python -m pytest tests -q
+docker compose --profile ciclo up smoke
+docker compose --profile cli run --rm -T --no-deps cli python -m pytest tests/exportacao -q -m smoke
+docker compose --profile cli run --rm -T --no-deps cli python scripts/gerar_dicionario.py --check
+
+# Fallback venv, com Python 3.12
+source .venv/bin/activate
+python -m pytest tests -q
+bash scripts/smoke.sh
 python scripts/gerar_dicionario.py --check
-docker compose --profile ciclo up smoke   # ciclo completo no container
 ```
 
-A suíte completa roda em cerca de 45 segundos numa máquina comum. Os testes que exigem Node pulam com aviso quando ele está ausente.
+A suíte completa roda em cerca de 45 segundos numa máquina comum ou na CI. Em Docker Desktop com o repositório em OneDrive, o bind mount pode deixar a execução mais lenta. Os testes que exigem Node pulam com aviso quando ele está ausente; a imagem de desenvolvimento já inclui Node.
 
 O dicionário de features é gerado por `scripts/gerar_dicionario.py` e conferido no workflow de qualidade. O ciclo em Docker é validado pelo job `Compose e imagem` do workflow `testes.yml`.
 

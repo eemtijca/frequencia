@@ -14,18 +14,23 @@ Como preparar uma exportação autorizada do aplicativo para uso no treino do Fr
 1. Na área de exportação do FrequenciApp, gere o pacote do período desejado no formato de tabelas (CSV por entidade).
 2. Reúna os arquivos numa pasta com os nomes esperados: escolas, series, turmas, alunos, horarios, frequencias, faltas, saidas, entradas, feriados e contexto_mec (este último vem do FrequencIA, não do app).
 3. Registre a base legal do tratamento (por exemplo, execução de política pública ou obrigação legal) para uso na importação.
-4. Importe no FrequencIA:
+4. Importe no FrequencIA. Os comandos usam Docker; no fallback venv, troque o prefixo Docker por `frequencia`:
 
 ```bash
-frequencia dados importar <pasta> --origem institucional \
-  --base-legal execucao-de-politica-publica --licenca "uso institucional autorizado"
+docker compose --profile cli run --rm cli frequencia dados importar \
+  <pasta> \
+  --origem institucional \
+  --base-legal execucao-de-politica-publica \
+  --licenca "uso institucional autorizado"
 ```
 
 5. O portão de privacidade roda na importação e de novo antes do treino; qualquer achado de PII bloqueia com mensagem indicando tabela e campo.
 6. Para reduzir a exposição, aplique a pseudonimização determinística antes do treino:
 
 ```bash
-frequencia privacidade pseudonimizar <pasta> --colunas nome
+docker compose --profile cli run --rm cli frequencia privacidade pseudonimizar \
+  <pasta> \
+  --colunas nome
 ```
 
 ## Campos que interessam ao modelo
@@ -50,8 +55,10 @@ O campo criado_em de cada chamada é essencial para o ponto-in-tempo: sem ele, o
 Após a importação, rode o perfil e o relatório de risco:
 
 ```bash
-frequencia dados gerar-perfil <pasta>
-frequencia privacidade relatorio-risco <pasta> --base-legal <base>
+docker compose --profile cli run --rm cli frequencia dados gerar-perfil <pasta>
+docker compose --profile cli run --rm cli frequencia privacidade relatorio-risco \
+  <pasta> \
+  --base-legal <base>
 ```
 
 O relatório de nível baixo com achados vazios é o pré-requisito para o dataset de treino.

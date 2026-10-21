@@ -17,7 +17,15 @@ flowchart TD
   I --> J[Publicação com rollback]
 ```
 
-Tudo isso é um comando: `frequencia experimentos executar <dataset> --identificador <id>`. As etapas rodam em ordem, cada uma grava artefato e estado, e reexecuções pulam o que concluiu.
+Tudo isso é um comando. No caminho padrão, use Docker:
+
+```bash
+docker compose --profile cli run --rm cli frequencia experimentos executar \
+  var/dados/processados/<dataset> \
+  --identificador <id>
+```
+
+As etapas rodam em ordem, cada uma grava artefato e estado, e reexecuções pulam o que concluiu. No fallback venv, ative o ambiente e troque o prefixo Docker por `frequencia`.
 
 ## Treino
 
@@ -60,4 +68,4 @@ Promoção com papel de aprovador até homologado, publicação no canal local c
 
 ## Automação
 
-O Makefile expõe setup, smoke, test, lint, tipo, formato, demo e limpar. O compose traz mlflow, app e o perfil de ciclo smoke. O pre-commit roda ruff e a guarda editorial a cada commit.
+O Makefile usa Docker por padrão e expõe setup, up, smoke, test, lint, tipo, formato, demo e limpar; os alvos `venv-*` são fallback. O compose traz mlflow, app, cli e o perfil de ciclo smoke. O pre-commit roda ruff e a guarda editorial a cada commit. O volume `dados` do Docker é separado do `var/` local do venv; registre o caminho usado no experimento.
