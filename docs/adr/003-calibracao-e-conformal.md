@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceita, com a força do prior de Platt e o conjunto de ajuste substituídos pela ADR-020.
+Aceita, com a força do prior de Platt e o conjunto de ajuste substituídos pela ADR-020 e o intervalo conforme substituído por conjuntos de predição pela ADR-021.
 
 ## Contexto
 

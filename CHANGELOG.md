@@ -10,6 +10,8 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 
 ### Corrigido
 
+- Intervalo conforme publicado era um intervalo de predição para um rótulo binário apresentado como incerteza da probabilidade, com largura média de 0,88 no teste e cobertura declarada sem medição em grupos pequenos. A saída passa a ser `conjunto_conformal` (`[1]`, `[0]` ou `[0, 1]`), com garantia por classe dentro de cada grupo Mondrian e cobertura medida no teste. O contrato de inferência sobe para a versão 2 (ADR-021).
+- Manifesto gravava os limiares de alerta e a confiança padrão em vez dos embutidos no `modelo.js` do mesmo pacote.
 - Calibração de Platt congelada na identidade: o prior era somado à perda média e não perdia peso com o volume de dados (no perfil `padrao`, a=1,0001 e b=0,00008). O prior passa a valer como cerca de cem pseudo-observações (ADR-020).
 - Dupla calibração latente: o estudante era destilado de alvos calibrados e recebia Platt de novo na avaliação e no modelo.js. O estudante passa a destilar o ensemble final sem calibração, e a calibração é ajustada uma única vez na validação, sobre a saída do estudante e com o aquecimento aplicado, que é o preditor publicado (ADR-020).
 - Documentação dizia que a discordância entre membros do ensemble era sinal de incerteza no produto; ela é diagnóstico offline e não chega ao navegador.

@@ -41,7 +41,7 @@ def _pacote_falso(raiz: Path, versao: str) -> tuple[Path, str]:
         dataset={},
         contrato={"features": ["x"], "padroes": [0.0], "tipos": ["contagem"]},
         calibracao={"a_platt": 1.0, "b_platt": 0.0, "taxa_base": 0.1},
-        conformal={"nivel": 0.9, "quantis": {}},
+        conformal={"nivel": 0.9, "limiares": {}},
         metricas={},
         limitacoes=[],
         hash_modelo=arquivos["modelo.js"],

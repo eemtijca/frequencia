@@ -135,7 +135,7 @@ def test_preditor_publicado_aplica_platt_e_aquecimento_uma_vez() -> None:
         "contrato": {"features": list(NOMES_FEATURES), "padroes": [0.0] * len(NOMES_FEATURES)},
         "calibracao": {"a_platt": 1.4, "b_platt": -0.2, "taxa_base": 0.15},
         "confianca": {"aquecimento_dias": 30, "validade_modelo_dias": 180},
-        "conformal": {"quantis": {}},
+        "conformal": {"limiares": {}},
         "limiares_alerta": {"entrada": 0.65, "saida": 0.45, "dias_consecutivos_entrada": 2},
         "identificacao": {"versao_modelo": "t"},
     }
@@ -144,16 +144,34 @@ def test_preditor_publicado_aplica_platt_e_aquecimento_uma_vez() -> None:
     assert abs(esperado - obtido) < 1e-12
 
 
-def test_conformal_cobre_o_nivel_pedido() -> None:
-    """Intervalos conformes cobrem o nível configurado em amostra grande."""
+def test_conjuntos_conformes_cobrem_cada_classe_fora_da_amostra() -> None:
+    """Os conjuntos cobrem o nível pedido em cada classe, em dados novos.
+
+    Com classes desbalanceadas, a cobertura marginal seria atingida dizendo
+    {0} para quase todos; a garantia por classe impede isso.
+    """
     rng = np.random.default_rng(11)
-    p = np.clip(rng.uniform(0.1, 0.9, 2000), 0.01, 0.99)
-    y = rng.binomial(1, p).astype(float)
-    series = ["serie"] * 2000
-    historico = rng.integers(10, 60, 2000).astype(float)
-    ajuste = calibracao.ajustar(p, y, series, historico)
-    for grupo, cobertura in ajuste.cobertura_por_grupo.items():
-        assert cobertura >= 0.85, (grupo, cobertura)
+
+    def amostra(n: int):
+        p = np.clip(rng.beta(1.2, 5.0, n), 0.01, 0.99)
+        return p, rng.binomial(1, p)
+
+    p_cal, y_cal = amostra(6000)
+    p_teste, y_teste = amostra(6000)
+    chaves_cal = ["serie|longo"] * len(p_cal)
+    limiares, contagens = calibracao.ajustar_conjuntos(p_cal, y_cal, chaves_cal, 0.9)
+    assert contagens["serie|longo"]["1"] == int(y_cal.sum())
+    relatorio = calibracao.avaliar_conjuntos(p_teste, y_teste, ["serie|longo"] * len(p_teste), limiares)
+    assert relatorio["cobertura_por_classe"]["0"] >= 0.88
+    assert relatorio["cobertura_por_classe"]["1"] >= 0.88
+    assert 0 < relatorio["fracao_conjuntos_unitarios"] < 1
+
+
+def test_conjunto_sem_dados_suficientes_nao_informa() -> None:
+    """Grupo pequeno ou desconhecido devolve {0, 1}, nunca uma decisão."""
+    limiares, _ = calibracao.ajustar_conjuntos(np.array([0.1, 0.9]), np.array([0, 1]), ["g", "g"], 0.9)
+    assert calibracao.conjunto_conformal(0.05, "g", limiares) == [0, 1]
+    assert calibracao.conjunto_conformal(0.95, "outro", limiares) == [0, 1]
 
 
 def test_curva_de_aprendizado_cresce_com_historico() -> None:

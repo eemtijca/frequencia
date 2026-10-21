@@ -332,6 +332,11 @@ def _executar_avaliacao(
         bruto, ajuste["a_platt"], ajuste["b_platt"], ajuste["taxa_base"], historico
     )
     baseline_prob = baseline.pontuar(x_teste)
+    chaves = [
+        calibracao_mod.chave_grupo(serie, int(dias))
+        for serie, dias in zip(teste["serie_id"].to_list(), historico, strict=True)
+    ]
+    conformal = calibracao_mod.avaliar_conjuntos(publicadas, y_teste, chaves, ajuste["limiares_conformal"])
 
     ajuste_dict = resultado_calibracao["resumo"]
     relatorio = avaliacao_mod.avaliar(
@@ -343,6 +348,7 @@ def _executar_avaliacao(
         dias=teste["dia"].to_list(),
         probabilidades_baseline=baseline_prob,
         ajuste_calibracao=ajuste_dict,
+        conformal=conformal,
     )
     relatorio["curva_aprendizado"] = ajuste_dict.get("curva_aprendizado", [])
     corpo = {"resumo": relatorio, "relatorio": relatorio}
@@ -395,8 +401,9 @@ def _executar_exportacao(
         },
         "conformal": {
             "nivel": ajuste["nivel_conformal"],
-            "quantis": ajuste["quantis_conformal"],
-            "cobertura_por_grupo": ajuste.get("cobertura_por_grupo", {}),
+            "metodo": ajuste["metodo_conformal"],
+            "limiares": ajuste["limiares_conformal"],
+            "cobertura_teste": resultado_avaliacao["resumo"].get("conformal", {}),
         },
         "limiares_alerta": {
             "entrada": 0.65,
@@ -630,7 +637,8 @@ def _cartao_modelo(params: dict, relatorio: dict, pacote_dataset: dict) -> str:
             "",
             f"- Platt regularizado: a={params['calibracao']['a_platt']}, b={params['calibracao']['b_platt']}",
             f"- Taxa base de aquecimento: {params['calibracao']['taxa_base']}",
-            f"- Conformal Mondrian por série e faixa de histórico, nível {params['conformal']['nivel']}",
+            "- Conjuntos de predição conformes Mondrian por série, faixa de histórico e classe, "
+            f"nível {params['conformal']['nivel']}",
             "- Estados de confiança, aquecimento de 30 dias e histerese de alerta embutidos no pacote",
             "",
             "## Limitações",
@@ -674,6 +682,7 @@ def _resumir_esperado(esperado: dict) -> dict:
         "probabilidade": esperado["probabilidade"],
         "estado_confianca": esperado["estado_confianca"],
         "alerta": esperado["alerta"],
+        "conjunto_conformal": esperado["conjunto_conformal"],
     }
 
 

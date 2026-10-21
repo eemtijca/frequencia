@@ -102,7 +102,7 @@ Evite hipóteses que não podem ser refutadas. Evite "vamos testar X" sem proble
 | logloss | qualidade da probabilidade | penaliza confiança errada |
 | Brier | erro da probabilidade | útil para calibração |
 | ECE | calibração | depende de bins e amostra |
-| cobertura conformal | intervalos | grupos pequenos são instáveis |
+| cobertura conformal | conjuntos por classe, medidos no teste | grupos pequenos devolvem {0, 1} |
 | precisão Top-10 | utilidade da lista | depende da capacidade da coordenação |
 | taxa de alerta | custo operacional | alerta demais é inútil |
 | dispersão de recall | fairness | exige amostra mínima |
@@ -252,6 +252,6 @@ Antes da promoção:
 - purga: intervalo entre splits do tamanho do horizonte.
 - OOF: previsão fora da dobra.
 - ECE: erro esperado de calibração.
-- conformal: intervalo de predição com cobertura mínima.
+- conformal: conjunto de classes plausíveis com cobertura mínima por classe.
 - PSI: índice de estabilidade populacional.
 - histerese: alerta liga após dois dias acima do limiar de entrada e desliga abaixo do limiar de saída.

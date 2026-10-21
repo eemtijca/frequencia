@@ -128,7 +128,7 @@ docker compose --profile cli run --rm -T --no-deps cli ls -la var/pacotes
 | --- | --- | --- |
 | auc | mínimo 0,70 | ordenação |
 | ece | máximo 0,10 | calibração |
-| cobertura_conformal | mínimo 0,80 | confiança dos intervalos |
+| cobertura_conformal | mínimo 0,80 | cobertura dos conjuntos por classe, no teste |
 | taxa_alerta | máximo 0,35 | custo operacional |
 | melhora_sobre_baseline | mínimo 0 | ganho sobre regras simples |
 | tamanho_pacote | máximo 262144 bytes | leveza |
@@ -209,7 +209,7 @@ As onze tabelas do contrato são escolas, series, turmas, horarios, alunos, freq
 | purga | intervalo entre treino, validação e teste do tamanho do horizonte |
 | OOF | previsão fora da dobra, usada para calibrar e destilar |
 | ECE | erro esperado de calibração |
-| conformal | intervalo de predição com cobertura mínima por grupo |
+| conformal | conjunto de classes plausíveis com cobertura mínima por grupo e classe, medida no teste |
 | PSI | índice de estabilidade populacional, usado para drift |
 | histerese | alerta liga após dois dias acima do limiar de entrada e desliga abaixo do limiar de saída |
 

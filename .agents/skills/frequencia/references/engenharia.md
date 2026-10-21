@@ -6,7 +6,7 @@ Critérios para interpretar resultados, diagnosticar gates e decidir com evidên
 
 - A unidade é aluno-dia. O horizonte é de sete dias letivos.
 - O rótulo é ter duas ou mais faltas, F ou FJ, no horizonte, contando enquanto o estudante está matriculado.
-- A saída é uma probabilidade calibrada, com intervalo conforme, faixa de risco, estado de confiança e alerta com histerese.
+- A saída é uma probabilidade calibrada, com conjunto conforme, faixa de risco, estado de confiança e alerta com histerese.
 - O produto é apoio à decisão da coordenação, nunca decisão automática, diagnóstico ou rótulo de estudante.
 - A capacidade operacional da coordenação é o limite real. Priorize Top-K diário e taxa de alerta, não apenas AUC.
 - O baseline de regras é o mínimo a superar. Complexidade sem ganho mensurável não se justifica.
@@ -41,7 +41,7 @@ Critérios para interpretar resultados, diagnosticar gates e decidir com evidên
 | logloss | qualidade da probabilidade | penaliza confiança errada |
 | Brier | erro quadrático da probabilidade | útil para comparar calibração |
 | ECE | erro esperado de calibração | depende do número de bins e da amostra |
-| cobertura conformal | confiança dos intervalos | grupos pequenos ficam instáveis |
+| cobertura conformal | confiança dos conjuntos por classe | grupos pequenos devolvem {0, 1} |
 | precisão Top-10 | utilidade da lista diária | depende da capacidade da coordenação |
 | taxa de alerta | custo operacional | um modelo que alerta demais é inútil |
 | dispersão de recall | fairness entre séries | exige amostra mínima por grupo |
@@ -49,7 +49,7 @@ Critérios para interpretar resultados, diagnosticar gates e decidir com evidên
 
 - Calibração não é enfeite. Uma probabilidade de 0,70 precisa se comportar como 0,70 na prática.
 - O aquecimento de 30 dias encolhe a predição para a taxa base. Não trate os primeiros dias como confiança alta.
-- O intervalo conforme é por série e faixa de histórico. Grupos pequenos podem ter intervalos largos; isso é honestidade, não defeito.
+- O conjunto conforme é por série, faixa de histórico e classe. Grupos pequenos devolvem {0, 1}; isso é honestidade, não defeito.
 - A histerese liga o alerta após dois dias acima do limiar de entrada e desliga abaixo do limiar de saída. Não releia o dia anterior de forma que anule a histerese.
 
 ## Subgrupos e fairness

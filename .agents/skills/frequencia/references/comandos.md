@@ -202,7 +202,7 @@ O ciclo grava `gates.json` mesmo quando o veredito é reprovado. `avaliacao vali
 | `monitoramento taxa-descarte` | Resumir taxa de descarte | sem flags específicas |
 | `monitoramento drift <pasta_experimento> <pasta_atual>` | Calcular PSI por feature | grava `drift.json` no experimento |
 | `monitoramento validade` | Conferir validade da versão publicada | sem flags específicas |
-| `monitoramento recalibrar <pasta_experimento>` | Recalcular Platt e conformal | exige OOF; não reexporta nem reempacota |
+| `monitoramento recalibrar <pasta_experimento>` | Recalcular Platt e conformal | exige estudante e dataset do experimento; não reexporta nem reempacota |
 | `monitoramento relatorio-saude` | Gerar relatório de saúde | `--pasta-experimento` para incluir drift |
 | `monitoramento recomendar-retreinamento` | Recomendar ação com base na saúde | sem `--pasta-experimento`, não vê drift |
 

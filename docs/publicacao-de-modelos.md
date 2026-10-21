@@ -10,7 +10,7 @@ Uma versão só anda para frente com todos os gates aprovados. Os limites vivem 
 | --- | --- | --- |
 | auc | AUC mínima 0,70 no teste | Capacidade de ordenação |
 | ece | ECE máximo 0,10 | Calibração da probabilidade |
-| cobertura_conformal | Cobertura mínima 0,80 | Confiança dos intervalos |
+| cobertura_conformal | Cobertura mínima 0,80 | Menor cobertura por classe dos conjuntos conformes, medida no teste |
 | taxa_alerta | Máxima 0,35 | Custo operacional da coordenação |
 | melhora_sobre_baseline | Mínima 0 | Ganho sobre as regras simples |
 | tamanho_pacote | Máximo 256 KiB | Leveza para celular modesto |

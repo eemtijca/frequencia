@@ -34,6 +34,7 @@ def avaliar(
     dias: list[str] | None = None,
     probabilidades_baseline: np.ndarray | None = None,
     ajuste_calibracao: dict | None = None,
+    conformal: dict | None = None,
     k_top: int = K_TOP_PADRAO,
 ) -> dict:
     """Avaliação completa de uma versão do modelo sobre um conjunto."""
@@ -78,11 +79,9 @@ def avaliar(
             "ganho_absoluto": round(metricas["auc"] - auc_baseline, 4),
         }
     if ajuste_calibracao is not None:
-        cobertura = ajuste_calibracao.get("cobertura_por_grupo", {})
-        relatorio["calibracao"] = {
-            "ece": ajuste_calibracao.get("ece_depois"),
-            "cobertura_minima": (round(min(cobertura.values()), 4) if cobertura else None),
-        }
+        relatorio["calibracao"] = {"ece": ajuste_calibracao.get("ece_depois")}
+    if conformal is not None:
+        relatorio["conformal"] = conformal
     if series is not None:
         relatorio["fairness"] = _fairness(y, p, series, metricas)
     return relatorio
@@ -229,7 +228,7 @@ def validar_gates(
     vereditos = {
         "auc": metricas.get("auc", 0.0) >= limiares["auc_minimo"],
         "ece": (calibracao.get("ece") or 0.0) <= limiares["ece_maximo"],
-        "cobertura_conformal": (calibracao.get("cobertura_minima") or 1.0)
+        "cobertura_conformal": (relatorio.get("conformal", {}).get("cobertura_minima_por_classe") or 0.0)
         >= limiares["cobertura_conformal_minima"],
         "taxa_alerta": metricas.get("taxa_alerta", 1.0) <= limiares["taxa_alerta_maxima"],
         "melhora_sobre_baseline": comparacao.get("ganho_absoluto", 0.0)
@@ -262,6 +261,7 @@ def gerar_relatorio_markdown(relatorio: dict, destino) -> str:
         "estabilidade_temporal",
         "comparacao_baseline",
         "calibracao",
+        "conformal",
         "fairness",
     ):
         corpo = relatorio.get(secao)

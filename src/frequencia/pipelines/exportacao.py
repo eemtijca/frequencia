@@ -2,7 +2,7 @@
 """Conversão do modelo destilado em artefato leve para o PWA.
 
 O núcleo é transpilado por m2cgen (LightGBM para JavaScript puro, sem
-dependências) e embrulhado por calibração, aquecimento, intervalo conforme,
+dependências) e embrulhado por calibração, aquecimento, conjunto conforme,
 estados de confiança e histerese, todos espelhados entre Python e JS. O
 caminho ONNX fica como alternativa documentada para consumidores não web.
 
@@ -40,7 +40,8 @@ console.log(JSON.stringify({
   saidas: saidas.map(function (s) { return s.probabilidade; }),
   duracao_ms: duracao_ms,
   estados: saidas.map(function (s) { return s.estado_confianca; }),
-  alertas: saidas.map(function (s) { return s.alerta.em_alerta; })
+  alertas: saidas.map(function (s) { return s.alerta.em_alerta; }),
+  conjuntos: saidas.map(function (s) { return s.conjunto_conformal; })
 }));
 """
 
@@ -67,7 +68,7 @@ def montar_modelo_js(
     cabecalho = (
         "// Modelo de risco de infrequência do FrequencIA.\n"
         "// Núcleo LightGBM destilado, transpilado por m2cgen; o invólucro aplica\n"
-        "// calibração, aquecimento, intervalo conforme, estados de confiança e\n"
+        "// calibração, aquecimento, conjunto conforme, estados de confiança e\n"
         "// histerese. Executa inteiramente no navegador, sem rede.\n"
     )
     blocos = [
@@ -87,7 +88,7 @@ def montar_modelo_js(
         "raiz.ordem = ORDEM;",
         "raiz.padroes = PADROES;",
         "raiz.versao_modelo = PARAMS.identificacao.versao_modelo;",
-        "raiz.limites_conhecidos = Object.keys(PARAMS.conformal.quantis);",
+        "raiz.limites_conhecidos = Object.keys(PARAMS.conformal.limiares);",
         "})(typeof module !== 'undefined' ? module.exports : (window.FrequenciaModelo = {}));",
     ]
     return "\n".join(blocos) + "\n"
@@ -117,8 +118,7 @@ def _funcao_prever_js() -> str:
   p = Math.min(1, Math.max(0, p));
   var serie = contexto.serie || 'geral';
   var chave = serie + '|' + faixaDe(hist);
-  var largura = PARAMS.conformal.quantis.hasOwnProperty(chave) ? PARAMS.conformal.quantis[chave] : 0.5;
-  var intervalo = [Math.max(0, p - largura), Math.min(1, p + largura)];
+  var conjunto = conjuntoDe(p, chave);
   var idade = contexto.idade_modelo_dias || 0;
   var estado = estadoDe(hist, idade, cobertura);
   var limiar = PARAMS.limiares_alerta;
@@ -134,13 +134,22 @@ def _funcao_prever_js() -> str:
     probabilidade_nucleo: nucleo,
     probabilidade_calibrada: p_cal,
     risco: p >= limiar.entrada ? 'alto' : (p >= limiar.saida ? 'medio' : 'baixo'),
-    intervalo_conformal: intervalo,
+    conjunto_conformal: conjunto,
     estado_confianca: estado,
     mensagem: PARAMS.mensagens[estado] || '',
     alerta: { em_alerta: emAlerta, dias_acima: diasAcima },
     chave_grupo: chave,
     versao_modelo: PARAMS.identificacao.versao_modelo
   };
+}
+
+function conjuntoDe(p, chave) {
+  var limiar = PARAMS.conformal.limiares.hasOwnProperty(chave) ? PARAMS.conformal.limiares[chave] : null;
+  if (!limiar) { return [0, 1]; }
+  var conjunto = [];
+  if (p <= limiar.negativo) { conjunto.push(0); }
+  if (p >= limiar.positivo) { conjunto.push(1); }
+  return conjunto.length ? conjunto : [0, 1];
 }
 
 function faixaDe(hist) {
@@ -188,11 +197,11 @@ def prever_em_python(
     p = peso * p_cal + (1 - peso) * cal["taxa_base"]
     p = min(1.0, max(0.0, p))
 
-    from frequencia.pipelines.calibracao import chave_grupo, intervalo_conformal
+    from frequencia.pipelines.calibracao import chave_grupo, conjunto_conformal
 
     serie = (contexto or {}).get("serie", "geral")
     chave = chave_grupo(serie, int(historico))
-    lo, hi = intervalo_conformal(p, chave, params["conformal"]["quantis"])
+    conjunto = conjunto_conformal(p, chave, params["conformal"]["limiares"])
 
     idade = (contexto or {}).get("idade_modelo_dias", 0)
     estado = confianca.estado_confianca(
@@ -213,7 +222,7 @@ def prever_em_python(
         "probabilidade_nucleo": prob_nucleo,
         "probabilidade_calibrada": p_cal,
         "risco": risco,
-        "intervalo_conformal": [lo, hi],
+        "conjunto_conformal": conjunto,
         "estado_confianca": estado,
         "alerta": alerta,
         "chave_grupo": chave,
@@ -294,6 +303,7 @@ def validar_artefato_js(
     saidas = resultado["saidas"]
     estados = resultado["estados"]
     alertas = resultado["alertas"]
+    conjuntos = resultado.get("conjuntos", [])
     divergencias = 0
     if esperados is not None:
         for obtido, alvo in zip(saidas, esperados, strict=False):
@@ -304,6 +314,9 @@ def validar_artefato_js(
                 divergencias += 1
         for obtido, alvo in zip(alertas, esperados, strict=False):
             if bool(obtido) != bool(alvo["alerta"]["em_alerta"]):
+                divergencias += 1
+        for obtido, alvo in zip(conjuntos, esperados, strict=False):
+            if "conjunto_conformal" in alvo and list(obtido) != list(alvo["conjunto_conformal"]):
                 divergencias += 1
     veredito = {
         "executou": True,

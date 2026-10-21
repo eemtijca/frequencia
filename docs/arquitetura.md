@@ -77,7 +77,7 @@ O coração semântico do pipeline é a materialização do diário por aluno e 
 
 ## Confiança do produto
 
-A saída publicada carrega quatro mecanismos de confiança: calibração de Platt regularizada em direção à identidade (o primeiro mês de dados não deforma a escala), encolhimento para a taxa base durante o aquecimento de 30 dias, intervalos conformes de Mondrian por série e faixa de histórico, e estados de confiança do produto (sem histórico, dados insuficientes, em observação, confiança moderada, confiança alta, modelo desatualizado). O alerta usa histerese: liga após dois dias acima do limiar de entrada e só desliga abaixo do limiar de saída, mais baixo.
+A saída publicada carrega quatro mecanismos de confiança: calibração de Platt com prior em direção à identidade, ajustada fora da amostra sobre o preditor publicado (pouca evidência não deforma a escala), encolhimento para a taxa base durante o aquecimento de 30 dias, conjuntos de predição conformes Mondrian por série, faixa de histórico e classe (`[1]` risco, `[0]` sem risco, `[0, 1]` indefinido), e estados de confiança do produto (sem histórico, dados insuficientes, em observação, confiança moderada, confiança alta, modelo desatualizado). O alerta usa histerese: liga após dois dias acima do limiar de entrada e só desliga abaixo do limiar de saída, mais baixo.
 
 ## Decisões registradas
 
