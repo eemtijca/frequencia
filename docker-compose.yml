@@ -1,6 +1,7 @@
 # Ambiente completo do FrequencIA em containers separados.
 # mlflow: servidor de rastreamento com backend SQLite e artefatos em volume.
 # app: Streamlit de governança apontando para o MLflow do compose.
+# cli: comandos pontuais na imagem de desenvolvimento, com a árvore de trabalho.
 # smoke: perfil de ciclo único que roda e valida os smoke tests no venv do
 # container e encerra com código de saída adequado.
 
@@ -10,6 +11,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
+    image: frequencia-runtime
     container_name: frequencia-mlflow
     command: >
       mlflow server
@@ -35,6 +37,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
+    image: frequencia-runtime
     container_name: frequencia-app
     command: streamlit run src/frequencia/web/app.py --server.address 0.0.0.0 --server.port 8501 --browser.gatherUsageStats false
     ports:
@@ -62,6 +65,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: dev
+    image: frequencia-dev
     container_name: frequencia-smoke
     command: bash scripts/smoke.sh
     volumes:
@@ -70,6 +74,32 @@ services:
       FREQUENCIA_WORKSPACE: /app
       FREQUENCIA_MLFLOW_URI: http://mlflow:5000
       FREQUENCIA_PERFIL: fumaca
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: "no"
+
+  cli:
+    profiles: ["cli"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    image: frequencia-dev
+    command: bash
+    volumes:
+      - .:/app
+      - dados:/app/var
+      - /app/.git
+      - /app/.venv
+      - /app/.hypothesis
+      - /app/.pytest_cache
+      - /app/.ruff_cache
+      - /app/.mypy_cache
+    environment:
+      FREQUENCIA_WORKSPACE: /app
+      FREQUENCIA_MLFLOW_URI: http://mlflow:5000
+      FREQUENCIA_FUSO: America/Fortaleza
     depends_on:
       mlflow:
         condition: service_healthy

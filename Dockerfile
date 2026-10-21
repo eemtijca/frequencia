@@ -27,12 +27,17 @@ COPY dados ./dados
 COPY scripts ./scripts
 COPY tests ./tests
 COPY config ./config
+COPY docs ./docs
+COPY projetos ./projetos
+COPY .agents ./.agents
+COPY .github ./.github
+COPY INSTRUCOES.md CONTRIBUTING.md AGENTS.md CHANGELOG.md CODE_OF_CONDUCT.md SECURITY.md ./
 
 RUN pip install --upgrade pip \
     && pip install -e ".[dev]" \
     && node --version
 
-RUN mkdir -p /app/var \
+RUN mkdir -p /app/var /app/.pytest_cache /app/.ruff_cache /app/.mypy_cache /app/.hypothesis \
     && chown -R frequencia:frequencia /app
 
 USER frequencia
