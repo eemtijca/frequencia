@@ -29,7 +29,7 @@ docker compose --profile cli run --rm cli frequencia empacotamento montar \
   var/artefatos/experimentos/<experimento>
 ```
 
-A etapa recalcula Platt e os quantis conformes sobre o OOF existente e atualiza calibracao.json. Reavalie os gates e reexporte o pacote antes de publicar. O `empacotamento montar` usa cartão mínimo e sem contexto MEC; confira o conteúdo gerado.
+A etapa recalcula Platt, os conjuntos conformes e os limiares de alerta sobre a saída do estudante existente no conjunto de calibração (validação e alunos reservados) e atualiza calibracao.json. Reavalie os gates e reexporte o pacote antes de publicar. O `empacotamento montar` usa cartão mínimo e sem contexto MEC; confira o conteúdo gerado.
 
 ## Retreinamento completo
 

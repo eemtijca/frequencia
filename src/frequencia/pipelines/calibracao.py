@@ -1,13 +1,13 @@
-# Calibração regularizada, predição conforme Mondrian e curva de aprendizado.
+# Calibração de Platt com prior, conjuntos conformes Mondrian, limiar de alerta e curva de aprendizado.
 """Confiança estatística da saída do modelo.
 
 Três camadas: Platt escalado com prior em direção à identidade (pouca
 evidência não deforma a saída, muita evidência corrige o que precisar),
 encolhimento para a taxa base durante o aquecimento, e conjuntos de
 predição conformes Mondrian por série, faixa de histórico e classe
-(ADR-021). Tudo é ajustado uma única vez, no
-conjunto de calibração, sobre a saída do estudante destilado: o mesmo
-preditor que o modelo.js publica (ADR-020).
+(ADR-021). Tudo é ajustado uma única vez, no conjunto de calibração, sobre
+a saída do estudante destilado: o mesmo preditor que o modelo.js publica
+(ADR-020).
 """
 
 from __future__ import annotations

@@ -59,13 +59,14 @@ sequenceDiagram
   CLI->>E: ConfigExperimento com semente e versão
   E->>F: treino modelo.joblib e meta.json
   E->>M: parâmetros, métricas e artefato
-  E->>F: ensemble com OOF, pesos e chaves
-  E->>F: calibracao.json com Platt e conformal
+  E->>F: ensemble com OOF no treino, pesos e alvo de destilação
   E->>F: estudante.joblib destilado
-  E->>F: avaliacao.json, relatório e gates.json
+  E->>F: calibracao.json com Platt, conjuntos conformes e limiares de alerta
+  E->>F: avaliacao.json no teste, relatório e gates.json
   E->>F: exportacoes modelo.js, ONNX e dados-teste
   E->>F: pacote zip com manifesto e fallback
   E->>F: estado.json com etapas concluídas
+  E->>M: run do artefato publicado, métricas de teste e gates
   CLI-->>O: resumo com métricas e gates
 ```
 

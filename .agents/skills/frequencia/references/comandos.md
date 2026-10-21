@@ -119,7 +119,7 @@ Use `ponto_no_tempo estrito` para treino. `atual` serve apenas para avaliação 
 | `experimentos executar <pasta_dataset>` | Executar o ciclo completo | `--identificador`; `--semente`; `--tentativas`; `--dobras`; `--versao-modelo`; `--min-app`; `--forca` exige `--justificativa` |
 | `experimentos treinar <pasta_dataset>` | Executar apenas o treino | baixo nível; prefira o ciclo completo |
 | `experimentos ensemble <pasta_experimento>` | Executar apenas o ensemble | exige dataset e estado do experimento |
-| `experimentos destilar <pasta_experimento>` | Executar apenas a destilação | exige OOF e `calibracao.json` |
+| `experimentos destilar <pasta_experimento>` | Executar apenas a destilação | exige a etapa de ensemble (`ensemble/oof.npz`); a calibração vem depois |
 | `experimentos listar` | Listar experimentos do workspace | sem flags específicas |
 | `experimentos comparar <experimentos...>` | Comparar métricas lado a lado | aceita duas ou mais pastas |
 | `experimentos interromper <identificador>` | Marcar experimento como interrompido | grava auditoria |

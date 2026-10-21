@@ -75,7 +75,7 @@ Critérios para interpretar resultados, diagnosticar gates e decidir com evidên
 | --- | --- | --- | --- |
 | AUC | mínimo 0,70 | rótulo, prevalência, vazamento, volume, qualidade das features, baseline | ajustar no teste ou afrouxar o gate |
 | ECE | máximo 0,10 | amostra de calibração, grupos pequenos, Platt, mudança de distribuição | recalibrar no teste e declarar sucesso |
-| cobertura conformal | mínimo 0,80 | tamanho dos grupos, quantis, séries e faixas | agrupar sem documentar |
+| cobertura conformal | mínimo 0,80 | tamanho dos grupos, limiares por classe, séries e faixas | agrupar sem documentar |
 | taxa de alerta | máximo 0,35 | limiar, prevalência, política de alerta, Top-K | subir o limiar apenas para passar |
 | melhora sobre baseline | mínimo 0 | força do baseline, segmentos, valor real da feature | adicionar complexidade sem ganho |
 | tamanho do pacote | máximo 256 KiB | profundidade do estudante, iterações, número de features, invólucro | remover calibração ou conformal |

@@ -147,7 +147,7 @@ O cartão não é marketing. Ele declara o que a versão faz, o que não faz e o
 | Gates aprovados e baseline superado | seguir para pacote e revisão de publicação |
 | AUC baixa | investigar rótulo, volume, vazamento e features |
 | ECE alto | revisar calibração e amostra por grupo |
-| Cobertura conformal baixa | revisar grupos e quantis |
+| Cobertura conformal baixa | revisar grupos, limiares por classe e a trocabilidade entre validação e teste |
 | Taxa de alerta alta | revisar limiar, política e capacidade |
 | Baseline não superado | simplificar ou abandonar a mudança |
 | Fairness com lacuna | investigar e mitigar antes de promover |

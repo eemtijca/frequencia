@@ -207,7 +207,7 @@ As onze tabelas do contrato são escolas, series, turmas, horarios, alunos, freq
 | F, FJ, S, P | falta, falta justificada, saída parcial e presença; vazio é ausência de chamada |
 | ponto-in-tempo | snapshot do diário como visível em um instante |
 | purga | intervalo entre treino, validação e teste do tamanho do horizonte |
-| OOF | previsão fora da dobra, usada para calibrar e destilar |
+| OOF | previsão fora da dobra no treino, usada para estimar os pesos do blending |
 | ECE | erro esperado de calibração |
 | conformal | conjunto de classes plausíveis com cobertura mínima por grupo e classe, medida no teste |
 | PSI | índice de estabilidade populacional, usado para drift |

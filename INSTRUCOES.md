@@ -42,7 +42,7 @@ O que o smoke faz, na ordem:
 1. Gera o pacote sintético (perfil fumaca: 2 escolas, 4 turmas, 100 alunos, cerca de 90 dias letivos) em `var/dados/sinteticos/smoke`.
 2. Valida o esquema das onze tabelas com pandera e roda o portão de privacidade.
 3. Constrói o dataset temporal em `var/dados/processados/smoke` com ponto-in-tempo estrito e separação treino, validação e teste com purga.
-4. Executa o ciclo completo do experimento em `var/artefatos/experimentos/smoke`: treino com MLflow, ensemble de sete membros com validação fora da dobra, calibração de Platt com conformal, destilação, avaliação com subgrupos e fairness, exportação do modelo.js e empacotamento com manifesto.
+4. Executa o ciclo completo do experimento em `var/artefatos/experimentos/smoke`: treino do modelo de referência com MLflow, ensemble de sete membros com validação fora da dobra no treino, destilação do estudante, calibração de Platt e conjuntos conformes na validação, avaliação no teste com subgrupos, fairness e partida a frio, exportação do modelo.js e empacotamento com manifesto.
 5. Confere os gates de promoção.
 6. Verifica a ausência de futuro numa amostra do dataset por reconstrução.
 7. Executa os casos sintéticos no Node e compara com a saída Python.
