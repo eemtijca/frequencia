@@ -45,7 +45,10 @@ from frequencia.pipelines import (
 )
 from frequencia.pipelines.treino import ConfigTreino
 
-ETAPAS = ("treino", "ensemble", "calibracao", "destilacao", "avaliacao", "exportacao", "empacotamento")
+# Divisões do dataset usadas para calibrar o estudante: nunca vistas por ele.
+DIVISOES_CALIBRACAO = ("validacao",)
+
+ETAPAS = ("treino", "ensemble", "destilacao", "calibracao", "avaliacao", "exportacao", "empacotamento")
 
 
 @dataclass
@@ -121,17 +124,17 @@ def executar(
     )
     resumo["ensemble"] = _resumir_ensemble(resultado_ensemble)
 
-    resultado_calibracao = execucao.rodar(
-        "calibracao",
-        lambda: _executar_calibracao(config, pasta, detalhado),
-    )
-    resumo["calibracao"] = resultado_calibracao["resumo"]
-
     resultado_destilacao = execucao.rodar(
         "destilacao",
-        lambda: _executar_destilacao(config, pasta, dados, resultado_calibracao, detalhado),
+        lambda: _executar_destilacao(config, pasta, dados, detalhado),
     )
     resumo["destilacao"] = resultado_destilacao
+
+    resultado_calibracao = execucao.rodar(
+        "calibracao",
+        lambda: _executar_calibracao(config, pasta, dados, detalhado),
+    )
+    resumo["calibracao"] = resultado_calibracao["resumo"]
 
     resultado_avaliacao = execucao.rodar(
         "avaliacao",
@@ -223,22 +226,75 @@ def _executar_ensemble(
     }
 
 
-def _executar_calibracao(config: ConfigExperimento, pasta: Path, detalhado: bool) -> dict:
+def _executar_destilacao(
+    config: ConfigExperimento,
+    pasta: Path,
+    dados: pl.DataFrame,
+    detalhado: bool,
+) -> dict:
+    """Destila o ensemble final para o estudante publicável.
+
+    O alvo é a previsão do ensemble reajustado em todo o treino, sem
+    calibração: a calibração é ajustada depois, uma única vez, sobre a saída
+    do próprio estudante (ADR-020). Destilar alvos já calibrados e calibrar
+    de novo aplicava Platt duas vezes.
+    """
     arquivo_oof = pasta / "ensemble" / "oof.npz"
     if not arquivo_oof.is_file():
         msg = "OOF do ensemble ausente: execute a etapa de ensemble antes."
         raise ErroEstado(msg)
     oof = np.load(file=arquivo_oof, allow_pickle=False)
-    ajuste = calibracao_mod.ajustar(
-        oof["blend"],
-        oof["rotulos"],
-        [str(valor) for valor in oof["series"].tolist()],
-        oof["historico"].astype(float),
+    ajuste_treino = dados.filter(pl.col("divisao") == "treino").sort(["dia", "aluno_id"])
+    from frequencia.features.catalogo import NOMES_FEATURES
+
+    x = ajuste_treino.select(NOMES_FEATURES).to_numpy()
+    alvos = oof["blend_treino"]
+    if len(alvos) != len(x):
+        msg = (
+            "Divergência de linhas entre o ensemble e o dataset na destilação. "
+            "Reconstrua o dataset com o mesmo passo do experimento."
+        )
+        raise ErroEstado(msg)
+    corpo = treino_mod.destilar(pasta, alvos=alvos, x=x, semente=config.semente)
+    logs.registrar(
+        "experimentos.destilar",
+        estagio="destilacao",
+        tamanho=corpo["tamanho_bytes"],
+        detalhado=detalhado,
     )
-    curva = calibracao_mod.curva_aprendizado(oof["blend"], oof["rotulos"], oof["historico"].astype(float))
+    return corpo
+
+
+def _conjunto(dados: pl.DataFrame, divisoes: tuple[str, ...]) -> pl.DataFrame:
+    return dados.filter(pl.col("divisao").is_in(list(divisoes))).sort(["dia", "aluno_id"])
+
+
+def _executar_calibracao(
+    config: ConfigExperimento,
+    pasta: Path,
+    dados: pl.DataFrame,
+    detalhado: bool,
+) -> dict:
+    """Calibra o estudante no conjunto de validação, que ele não viu."""
+    from frequencia.features.catalogo import NOMES_FEATURES
+
+    calibracao = _conjunto(dados, DIVISOES_CALIBRACAO)
+    if calibracao.height == 0 or calibracao["rotulo"].n_unique() < 2:
+        msg = "Conjunto de calibração vazio ou com uma só classe. Gere mais dias letivos."
+        raise ErroEstado(msg)
+    estudante = treino_mod.carregar_estudante(pasta)
+    bruto = estudante.predict_proba(calibracao.select(NOMES_FEATURES).to_numpy())[:, 1]
+    rotulos = calibracao["rotulo"].cast(pl.Int32).to_numpy()
+    historico = calibracao["historico_dias"].to_numpy().astype(float)
+    ajuste = calibracao_mod.ajustar(bruto, rotulos, calibracao["serie_id"].to_list(), historico)
+    publicadas = calibracao_mod.prever_publicado(
+        bruto, ajuste.a_platt, ajuste.b_platt, ajuste.taxa_base, historico
+    )
+    curva = calibracao_mod.curva_aprendizado(publicadas, rotulos, historico)
     corpo = {
         "resumo": {
             **ajuste.para_dict(),
+            "linhas_calibracao": int(calibracao.height),
             "curva_aprendizado": curva,
         },
         "ajuste": ajuste.para_dict(),
@@ -246,43 +302,10 @@ def _executar_calibracao(config: ConfigExperimento, pasta: Path, detalhado: bool
     with (pasta / "calibracao.json").open("w", encoding="utf-8") as saida:
         json.dump(corpo["resumo"], saida, ensure_ascii=False, indent=2, sort_keys=True)
         saida.write("\n")
-    return corpo
-
-
-def _executar_destilacao(
-    config: ConfigExperimento,
-    pasta: Path,
-    dados: pl.DataFrame,
-    resultado_calibracao: dict,
-    detalhado: bool,
-) -> dict:
-    oof = np.load(file=pasta / "ensemble" / "oof.npz", allow_pickle=False)
-    calibradas = calibracao_mod.aplicar_platt(
-        oof["blend"],
-        resultado_calibracao["ajuste"]["a_platt"],
-        resultado_calibracao["ajuste"]["b_platt"],
-    )
-    ajuste_treino = (
-        dados.filter(pl.col("divisao").is_in(["treino", "validacao"]))
-        .sort(["dia", "aluno_id"])
-        .with_row_index("linha")
-    )
-    from frequencia.features.catalogo import NOMES_FEATURES
-
-    x_tudo = ajuste_treino.select(NOMES_FEATURES).to_numpy()
-    linhas_oof = oof["linhas_oof"].astype(int)
-    x = x_tudo[linhas_oof]
-    if len(x) != len(calibradas):
-        msg = (
-            "Divergência de linhas entre OOF e dataset na destilação. "
-            "Reconstrua o dataset com o mesmo passo do experimento."
-        )
-        raise ErroEstado(msg)
-    corpo = treino_mod.destilar(pasta, alvos=calibradas, x=x, semente=config.semente)
     logs.registrar(
-        "experimentos.destilar",
-        estagio="destilacao",
-        tamanho=corpo["tamanho_bytes"],
+        "experimentos.calibrar",
+        estagio="calibracao",
+        linhas=int(calibracao.height),
         detalhado=detalhado,
     )
     return corpo
@@ -295,7 +318,8 @@ def _executar_avaliacao(
     resultado_calibracao: dict,
     detalhado: bool,
 ) -> dict:
-    teste = dados.filter(pl.col("divisao") == "teste")
+    """Avalia no teste o preditor publicado: estudante, Platt e aquecimento."""
+    teste = _conjunto(dados, ("teste",))
     from frequencia.features.catalogo import NOMES_FEATURES
 
     x_teste = teste.select(NOMES_FEATURES).to_numpy()
@@ -303,16 +327,19 @@ def _executar_avaliacao(
     estudante = treino_mod.carregar_estudante(pasta)
     bruto = estudante.predict_proba(x_teste)[:, 1]
     ajuste = resultado_calibracao["ajuste"]
-    calibradas = calibracao_mod.aplicar_platt(bruto, ajuste["a_platt"], ajuste["b_platt"])
+    historico = teste["historico_dias"].to_numpy().astype(float)
+    publicadas = calibracao_mod.prever_publicado(
+        bruto, ajuste["a_platt"], ajuste["b_platt"], ajuste["taxa_base"], historico
+    )
     baseline_prob = baseline.pontuar(x_teste)
 
     ajuste_dict = resultado_calibracao["resumo"]
     relatorio = avaliacao_mod.avaliar(
-        calibradas,
+        publicadas,
         y_teste,
         series=teste["serie_id"].to_list(),
         turmas=teste["turma_do_dia"].to_list(),
-        historico=teste["historico_dias"].to_numpy(),
+        historico=historico,
         dias=teste["dia"].to_list(),
         probabilidades_baseline=baseline_prob,
         ajuste_calibracao=ajuste_dict,

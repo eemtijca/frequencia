@@ -156,12 +156,10 @@ def destilar(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...)) 
     try:
         pasta_experimento = Path(pasta_experimento)
         dados = _dataset_do_experimento(pasta_experimento)
-        calibracao = json.loads((pasta_experimento / "calibracao.json").read_text(encoding="utf-8"))
         corpo = exp_mod._executar_destilacao(
             exp_mod.ConfigExperimento(pasta_dataset=Path()),
             pasta_experimento,
             dados,
-            {"resumo": calibracao, "ajuste": calibracao},
             contexto.detalhado,
         )
         contexto_mod.emitir(contexto, corpo, titulo="Destilação concluída:")

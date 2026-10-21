@@ -10,6 +10,9 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 
 ### Corrigido
 
+- Calibração de Platt congelada na identidade: o prior era somado à perda média e não perdia peso com o volume de dados (no perfil `padrao`, a=1,0001 e b=0,00008). O prior passa a valer como cerca de cem pseudo-observações (ADR-020).
+- Dupla calibração latente: o estudante era destilado de alvos calibrados e recebia Platt de novo na avaliação e no modelo.js. O estudante passa a destilar o ensemble final sem calibração, e a calibração é ajustada uma única vez na validação, sobre a saída do estudante e com o aquecimento aplicado, que é o preditor publicado (ADR-020).
+- Documentação dizia que a discordância entre membros do ensemble era sinal de incerteza no produto; ela é diagnóstico offline e não chega ao navegador.
 - Dobras temporais do ensemble não purgavam o horizonte: dias de treino imediatamente antes da validação carregavam rótulos que olham para dentro dela. O efeito medido no perfil `padrao` foi pequeno (AUC OOF 0,7301 sem purga contra 0,7287 com purga), mas a regra passa a ser a mesma da separação do dataset.
 - Rótulo censurado pela desistência: quem desistia dentro da janela tinha as faltas truncadas e tendia a rótulo negativo, e quem desistia no primeiro dia saía do dataset. Desistência dentro da janela passa a contar como desfecho positivo, e o gerador sintético liga a chance de desistir à propensão a faltar, com escalada de faltas antes do abandono (ADR-019).
 - Experimento repetido com o mesmo identificador e outra configuração (semente, dobras, versão) ou outro dataset reaproveitava as etapas antigas e gravava a configuração nova no estado; agora uma chave de configuração e dataset invalida o ciclo, e refazer uma etapa refaz as seguintes.

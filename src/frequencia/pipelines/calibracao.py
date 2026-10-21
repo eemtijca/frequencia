@@ -1,11 +1,12 @@
 # Calibração regularizada, predição conforme Mondrian e curva de aprendizado.
 """Confiança estatística da saída do modelo.
 
-Três camadas: Platt escalado com regularização em direção à identidade (o
-primeiro mês de dados não pode deformar a saída), encolhimento para a taxa
-base durante o aquecimento, e predição conforme Mondrian por série e faixa
-de histórico, que devolve intervalos com cobertura garantida. A curva de
-aprendizado documenta a qualidade por quantidade de histórico.
+Três camadas: Platt escalado com prior em direção à identidade (pouca
+evidência não deforma a saída, muita evidência corrige o que precisar),
+encolhimento para a taxa base durante o aquecimento, e predição conforme
+Mondrian por série e faixa de histórico. Tudo é ajustado uma única vez, no
+conjunto de calibração, sobre a saída do estudante destilado: o mesmo
+preditor que o modelo.js publica (ADR-020).
 """
 
 from __future__ import annotations
@@ -14,7 +15,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-LAMBDA_PLATT = 0.5
+# Força do prior de Platt em pseudo-observações: a perda é somada, não
+# média, então o prior pesa como cerca de cem linhas de dados e perde
+# importância à medida que a evidência cresce (ADR-020).
+LAMBDA_PLATT = 10.0
 NIVEL_CONFORMAL = 0.90
 FAIXAS_HISTORICO = (0, 14, 30, 10**6)
 NOMES_FAIXAS = ("curto", "medio", "longo")
@@ -63,10 +67,13 @@ def aplicar_platt(p: np.ndarray, a: float, b: float) -> np.ndarray:
 def ajustar_platt(
     probabilidades: np.ndarray, rotulos: np.ndarray, *, lam: float = LAMBDA_PLATT
 ) -> tuple[float, float]:
-    """Ajusta (a, b) com perda logística regularizada em direção à identidade.
+    """Ajusta (a, b) com perda logística e prior em direção à identidade.
 
-    A identidade é a=1 e b=0: sem evidência suficiente, a calibração não
-    move a saída do modelo, o que protege o primeiro mês de dados.
+    A identidade é a=1 e b=0. O objetivo é a perda somada mais
+    lam((a-1)² + b²), escrito como média com o prior dividido por n para
+    manter a escala numérica: com poucas linhas o prior domina e a saída
+    quase não se move; com muitas, os dados decidem. Somar o prior à perda
+    média, como antes, congelava a calibração na identidade para qualquer n.
     """
     from scipy.optimize import minimize
 
@@ -78,7 +85,7 @@ def ajustar_platt(
         escore = a * z + b
         # Perda logística estável.
         perda = np.mean(np.logaddexp(0, -escore) + (1 - y) * escore)
-        regularizacao = lam * ((a - 1.0) ** 2 + b**2)
+        regularizacao = lam / max(1, len(y)) * ((a - 1.0) ** 2 + b**2)
         return perda + regularizacao
 
     resultado = minimize(
@@ -108,8 +115,30 @@ def _erro_calibracao_esperado(probabilidades: np.ndarray, rotulos: np.ndarray, b
     return float(erro)
 
 
+def prever_publicado(
+    bruto: np.ndarray,
+    a: float,
+    b: float,
+    taxa_base: float,
+    historico: np.ndarray,
+    aquecimento_dias: int | None = None,
+) -> np.ndarray:
+    """Probabilidade final, vetorizada, com a semântica exata do modelo.js.
+
+    Platt sobre a saída do núcleo, depois mistura com a taxa base pelo peso
+    min(1, histórico/aquecimento). Calibração, conformal e avaliação usam
+    esta função para medir o preditor que vai para o navegador.
+    """
+    from frequencia.features.confianca import LIMIARES_CONFIANCA
+
+    dias = LIMIARES_CONFIANCA["aquecimento_dias"] if aquecimento_dias is None else aquecimento_dias
+    calibrada = aplicar_platt(np.clip(np.asarray(bruto, dtype=float), 1e-6, 1 - 1e-6), a, b)
+    peso = np.clip(np.asarray(historico, dtype=float) / max(1, dias), 0.0, 1.0)
+    return np.clip(peso * calibrada + (1 - peso) * taxa_base, 0.0, 1.0)
+
+
 def ajustar(
-    probabilidades: np.ndarray,
+    bruto: np.ndarray,
     rotulos: np.ndarray,
     series: list[str] | None,
     historico: np.ndarray,
@@ -117,12 +146,17 @@ def ajustar(
     lam: float = LAMBDA_PLATT,
     nivel: float = NIVEL_CONFORMAL,
 ) -> AjusteCalibracao:
-    """Ajusta Platt regularizado e os quantis conformes por grupo."""
-    p = np.clip(np.asarray(probabilidades, dtype=float), 1e-6, 1 - 1e-6)
+    """Ajusta Platt e os quantis conformes sobre o conjunto de calibração.
+
+    bruto é a saída do núcleo publicado (o estudante) em linhas que ele não
+    viu no treino; os quantis conformes usam a probabilidade final, depois
+    do Platt e do aquecimento.
+    """
+    p = np.clip(np.asarray(bruto, dtype=float), 1e-6, 1 - 1e-6)
     y = np.asarray(rotulos, dtype=float)
     a, b = ajustar_platt(p, y, lam=lam)
-    calibradas = aplicar_platt(p, a, b)
     taxa_base = float(y.mean())
+    calibradas = prever_publicado(p, a, b, taxa_base, np.asarray(historico, dtype=float))
 
     if series is None:
         series = ["geral"] * len(y)

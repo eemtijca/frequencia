@@ -49,3 +49,4 @@
 | [017](adr/017-diretrizes-de-ciencia-e-inovacao.md) | Diretrizes de ciência e inovação e modo pesquisa dos agentes. |
 | [018](adr/018-promocao-verificada-no-motor.md) | Requisitos de promoção verificados no motor e trava do registro. |
 | [019](adr/019-desistencia-no-rotulo.md) | Desistência dentro da janela conta como desfecho positivo. |
+| [020](adr/020-calibracao-unica-fora-da-amostra.md) | Calibração única, fora da amostra, sobre o preditor publicado. |

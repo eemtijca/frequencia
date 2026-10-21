@@ -101,6 +101,49 @@ def test_calibracao_regularizada_protege_identidade() -> None:
     assert abs(b) < 1.0
 
 
+def test_calibracao_corrige_descalibracao_com_muita_evidencia() -> None:
+    """O prior perde peso com n: com muitos dados, Platt recupera a correção.
+
+    Antes, o prior somado à perda média congelava (a, b) perto da identidade
+    para qualquer volume, e o ECE ficava em torno de 0,09 mesmo com 300 mil
+    linhas.
+    """
+    rng = np.random.default_rng(0)
+    z = rng.normal(-1.0, 1.2, 300_000)
+    y = (rng.random(len(z)) < 1 / (1 + np.exp(-z))).astype(float)
+    p_modelo = 1 / (1 + np.exp(-(0.5 * z - 0.8)))  # verdade: a = 2, b = 1,6
+    a, b = calibracao.ajustar_platt(p_modelo, y)
+    assert abs(a - 2.0) < 0.1
+    assert abs(b - 1.6) < 0.1
+    poucos_a, _ = calibracao.ajustar_platt(p_modelo[:40], y[:40])
+    assert abs(poucos_a - 1.0) < abs(a - 1.0)
+
+
+def test_preditor_publicado_aplica_platt_e_aquecimento_uma_vez() -> None:
+    """A função vetorizada bate com o espelho Python do modelo.js."""
+    from frequencia.pipelines import exportacao
+
+    class _Nucleo:
+        def predict(self, entrada):
+            return [0.3]
+
+    from frequencia.features.catalogo import NOMES_FEATURES
+
+    vetor = [0.0] * len(NOMES_FEATURES)
+    vetor[NOMES_FEATURES.index("historico_dias")] = 12
+    params = {
+        "contrato": {"features": list(NOMES_FEATURES), "padroes": [0.0] * len(NOMES_FEATURES)},
+        "calibracao": {"a_platt": 1.4, "b_platt": -0.2, "taxa_base": 0.15},
+        "confianca": {"aquecimento_dias": 30, "validade_modelo_dias": 180},
+        "conformal": {"quantis": {}},
+        "limiares_alerta": {"entrada": 0.65, "saida": 0.45, "dias_consecutivos_entrada": 2},
+        "identificacao": {"versao_modelo": "t"},
+    }
+    esperado = exportacao.prever_em_python(vetor, {"serie": "s"}, _Nucleo(), params)["probabilidade"]
+    obtido = calibracao.prever_publicado(np.array([0.3]), 1.4, -0.2, 0.15, np.array([12.0]))[0]
+    assert abs(esperado - obtido) < 1e-12
+
+
 def test_conformal_cobre_o_nivel_pedido() -> None:
     """Intervalos conformes cobrem o nível configurado em amostra grande."""
     rng = np.random.default_rng(11)

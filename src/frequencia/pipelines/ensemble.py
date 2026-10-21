@@ -3,7 +3,8 @@
 
 Membros de base: LightGBM curto e médio, XGBoost, CatBoost, histogramas do
 scikit-learn, regressão logística e baseline de regras. A validação usa
-dobras temporais expansivas com previsões fora da dobra (OOF), o meta-modelo
+dobras temporais expansivas sobre o treino, com purga do horizonte e
+previsões fora da dobra (OOF), o meta-modelo
 é uma regressão logística regularizada sobre as probabilidades dos membros e
 a discordância entre membros alimenta o sinal de incerteza. O ensemble nunca
 é publicado: destila para o estudante leve (inspiração TabFM, ADR-012).
@@ -93,11 +94,9 @@ def montar(
     pasta_ensemble = pasta_experimento / "ensemble"
     pasta_ensemble.mkdir(parents=True, exist_ok=True)
 
-    dados = (
-        dataset.filter(pl.col("divisao").is_in(["treino", "validacao"]))
-        .sort(["dia", "aluno_id"])
-        .with_row_index("linha")
-    )
+    # Só o treino: a validação fica reservada para a calibração do estudante
+    # e o teste para a avaliação (ADR-020).
+    dados = dataset.filter(pl.col("divisao") == "treino").sort(["dia", "aluno_id"]).with_row_index("linha")
     dias_unicos = sorted(dados["dia"].unique().to_list())
     particoes = _dobras_temporais(dias_unicos, dobras, purga)
     if not particoes:
@@ -152,13 +151,21 @@ def montar(
         ),
     }
 
-    # Reajusta os membros finais com todos os dados de treino+validação.
+    # Reajusta os membros finais com todo o treino. A previsão do ensemble
+    # final sobre o treino é o alvo da destilação: as previsões OOF servem
+    # para estimar os pesos do blending, mas na primeira dobra vêm de membros
+    # treinados com poucos dias. O excesso de confiança desse alvo dentro da
+    # amostra é corrigido depois, pela calibração no conjunto de validação.
+    colunas_finais = []
     for nome, fabrica in _criar_membros(semente).items():
         if nome == NOME_BASELINE:
+            colunas_finais.append(baseline.pontuar(x_tudo))
             continue
         modelo = fabrica()
         modelo.fit(x_tudo, y_tudo)
+        colunas_finais.append(modelo.predict_proba(x_tudo)[:, 1])
         joblib.dump(modelo, pasta_ensemble / f"{nome}.joblib")
+    blend_treino = meta.predict_proba(np.column_stack(colunas_finais))[:, 1]
 
     chaves_oof = dados.filter(pl.col("linha").is_in(linhas_oof))
     np.savez(
@@ -173,6 +180,7 @@ def montar(
         historico=chaves_oof["historico_dias"].to_numpy(),
         alunos=np.array(chaves_oof["aluno_id"].to_list()),
         dias=np.array(chaves_oof["dia"].to_list()),
+        blend_treino=blend_treino,
     )
     chaves_oof.select(
         "linha", "aluno_id", "dia", "turma_do_dia", "serie_id", "historico_dias", "rotulo"

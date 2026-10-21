@@ -133,8 +133,17 @@ def recalibrar(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...)
 
     contexto = _ctx(ctx)
     try:
+        from frequencia.pipelines import dataset as dataset_mod
+
+        pasta_experimento = Path(pasta_experimento)
+        estado = json.loads((pasta_experimento / "estado.json").read_text(encoding="utf-8"))
+        pasta_dataset = Path(estado["config"]["pasta_dataset"])
+        dados = dataset_mod.carregar_dataset(pasta_dataset)["dataset"]
         resultado = exp_mod._executar_calibracao(
-            exp_mod.ConfigExperimento(pasta_dataset=Path()), Path(pasta_experimento), contexto.detalhado
+            exp_mod.ConfigExperimento(pasta_dataset=pasta_dataset),
+            pasta_experimento,
+            dados,
+            contexto.detalhado,
         )
         contexto_mod.emitir(contexto, resultado["resumo"], titulo="Recalibração:")
     except Exception as exc:

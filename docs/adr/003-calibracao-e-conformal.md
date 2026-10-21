@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceita.
+Aceita, com a força do prior de Platt e o conjunto de ajuste substituídos pela ADR-020.
 
 ## Contexto
 

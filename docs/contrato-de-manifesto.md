@@ -19,7 +19,7 @@ O manifest.json é o documento que o FrequenciApp lê antes de qualquer coisa. O
 | validade_ate | data | Data em que o app passa a exibir modelo desatualizado. |
 | dataset | objeto | Identificador, linhas e taxa do rótulo do treino. |
 | contrato | objeto | features (ordem fixa), padroes e tipos. |
-| calibracao | objeto | a_platt, b_platt, taxa_base, lambda e ECE medido. |
+| calibracao | objeto | a_platt, b_platt e taxa_base, ajustados no conjunto de validação sobre a saída do estudante. |
 | conformal | objeto | nível, quantis por grupo e cobertura por grupo. |
 | limiares_alerta | objeto | entrada, saída e dias_consecutivos_entrada. |
 | confianca | objeto | aquecimento_dias e validade_modelo_dias. |
