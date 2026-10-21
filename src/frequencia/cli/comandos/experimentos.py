@@ -131,8 +131,11 @@ def ensemble(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...)) 
     contexto = _ctx(ctx)
     try:
         pasta_experimento = Path(pasta_experimento)
-        dados = _dataset_do_experimento(pasta_experimento)
-        resultado = ensemble_mod.montar(pasta_experimento, dados, detalhado=contexto.detalhado)
+        pacote = _pacote_do_experimento(pasta_experimento)
+        horizonte = int(pacote["meta"].get("config", {}).get("horizonte_dias_letivos", 7))
+        resultado = ensemble_mod.montar(
+            pasta_experimento, pacote["dataset"], purga=horizonte, detalhado=contexto.detalhado
+        )
         corpo = {
             "membros": resultado.membros,
             "pesos": resultado.pesos,
@@ -270,6 +273,11 @@ def relatorio(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...))
 
 def _dataset_do_experimento(pasta: Path):
     """Localiza o dataset usado por um experimento a partir do estado."""
+    return _pacote_do_experimento(pasta)["dataset"]
+
+
+def _pacote_do_experimento(pasta: Path) -> dict:
+    """Dataset e metadado usados por um experimento, a partir do estado."""
     from frequencia.pipelines import dataset as dataset_mod
 
     alvo = Path(pasta) / "estado.json"
@@ -277,6 +285,6 @@ def _dataset_do_experimento(pasta: Path):
         estado = json.loads(alvo.read_text(encoding="utf-8"))
         pasta_dataset = estado.get("config", {}).get("pasta_dataset")
         if pasta_dataset:
-            return dataset_mod.carregar_dataset(Path(pasta_dataset))["dataset"]
+            return dataset_mod.carregar_dataset(Path(pasta_dataset))
     msg = f"Estado do experimento ausente em {pasta}. Execute o ciclo completo antes."
     raise FileNotFoundError(msg)

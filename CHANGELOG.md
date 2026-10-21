@@ -10,6 +10,7 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 
 ### Corrigido
 
+- Dobras temporais do ensemble não purgavam o horizonte: dias de treino imediatamente antes da validação carregavam rótulos que olham para dentro dela. O efeito medido no perfil `padrao` foi pequeno (AUC OOF 0,7301 sem purga contra 0,7287 com purga), mas a regra passa a ser a mesma da separação do dataset.
 - Rótulo censurado pela desistência: quem desistia dentro da janela tinha as faltas truncadas e tendia a rótulo negativo, e quem desistia no primeiro dia saía do dataset. Desistência dentro da janela passa a contar como desfecho positivo, e o gerador sintético liga a chance de desistir à propensão a faltar, com escalada de faltas antes do abandono (ADR-019).
 - Experimento repetido com o mesmo identificador e outra configuração (semente, dobras, versão) ou outro dataset reaproveitava as etapas antigas e gravava a configuração nova no estado; agora uma chave de configuração e dataset invalida o ciclo, e refazer uma etapa refaz as seguintes.
 - Duração do ensemble era medida depois do trabalho e saía sempre zero.

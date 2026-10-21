@@ -21,6 +21,7 @@ import numpy as np
 import polars as pl
 
 from frequencia.infra import logs
+from frequencia.infra.erros import ErroValidacao
 from frequencia.pipelines import baseline
 
 NOME_BASELINE = "baseline_regras"
@@ -38,22 +39,33 @@ class ResultadoEnsemble:
     duracao_segundos: float
 
 
-def _dobras_temporais(dias: list[str], quantidade: int = 3) -> list[tuple[list[str], list[str]]]:
-    """Dobras expansivas: treino cresce, validação desliza no tempo."""
+def _dobras_temporais(
+    dias: list[str], quantidade: int = 3, purga: int = 0
+) -> list[tuple[list[str], list[str]]]:
+    """Dobras expansivas: treino cresce, validação desliza no tempo.
+
+    Os últimos `purga` dias antes de cada bloco de validação saem do treino
+    da dobra: o rótulo deles olha para dias que já são validação, e
+    mantê-los vazaria o desfecho para o membro (mesma regra da separação
+    do dataset, ADR-014). Dobras sem nenhum dia de treino são descartadas.
+    """
     total = len(dias)
     if total < 2:
         return []
     if total < quantidade + 2:
-        return [(dias[: max(1, total - 1)], dias[-1:])]
-    tamanho_bloco = max(1, total // (quantidade + 1))
-    dobras = []
-    for indice in range(quantidade):
-        inicio_validacao = tamanho_bloco * (indice + 1)
-        fim_validacao = inicio_validacao + tamanho_bloco
-        if indice == quantidade - 1:
-            fim_validacao = total
-        dobras.append((dias[:inicio_validacao], dias[inicio_validacao:fim_validacao]))
-    return dobras
+        candidatas = [(dias[: max(0, total - 1 - purga)], dias[-1:])]
+    else:
+        tamanho_bloco = max(1, total // (quantidade + 1))
+        candidatas = []
+        for indice in range(quantidade):
+            inicio_validacao = tamanho_bloco * (indice + 1)
+            fim_validacao = inicio_validacao + tamanho_bloco
+            if indice == quantidade - 1:
+                fim_validacao = total
+            candidatas.append(
+                (dias[: max(0, inicio_validacao - purga)], dias[inicio_validacao:fim_validacao])
+            )
+    return [(treino, validacao) for treino, validacao in candidatas if treino]
 
 
 def montar(
@@ -62,6 +74,7 @@ def montar(
     *,
     semente: int = 20261018,
     dobras: int = 3,
+    purga: int = 0,
     detalhado: bool = False,
 ) -> ResultadoEnsemble:
     """Ajusta o ensemble completo sobre o dataset com OOF temporal.
@@ -86,7 +99,10 @@ def montar(
         .with_row_index("linha")
     )
     dias_unicos = sorted(dados["dia"].unique().to_list())
-    particoes = _dobras_temporais(dias_unicos, dobras)
+    particoes = _dobras_temporais(dias_unicos, dobras, purga)
+    if not particoes:
+        msg = "Dias insuficientes para dobras temporais com purga do horizonte. Gere mais dias letivos."
+        raise ErroValidacao(msg)
 
     x_tudo = dados.select(NOMES_FEATURES).to_numpy()
     y_tudo = dados["rotulo"].cast(pl.Int32).to_numpy()

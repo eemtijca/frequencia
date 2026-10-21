@@ -117,7 +117,7 @@ def executar(
 
     resultado_ensemble = execucao.rodar(
         "ensemble",
-        lambda: _executar_ensemble(config, pasta, dados, detalhado),
+        lambda: _executar_ensemble(config, pasta, dados, _horizonte(pacote), detalhado),
     )
     resumo["ensemble"] = _resumir_ensemble(resultado_ensemble)
 
@@ -198,9 +198,21 @@ def _executar_treino(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame
     }
 
 
-def _executar_ensemble(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, detalhado: bool):
+def _horizonte(pacote_dataset: dict) -> int:
+    """Horizonte do rótulo em dias letivos, lido do metadado do dataset."""
+    return int(pacote_dataset.get("meta", {}).get("config", {}).get("horizonte_dias_letivos", 7))
+
+
+def _executar_ensemble(
+    config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, horizonte: int, detalhado: bool
+):
     resultado = ensemble_mod.montar(
-        pasta, dados, semente=config.semente, dobras=config.dobras_ensemble, detalhado=detalhado
+        pasta,
+        dados,
+        semente=config.semente,
+        dobras=config.dobras_ensemble,
+        purga=horizonte,
+        detalhado=detalhado,
     )
     return {
         "membros": resultado.membros,

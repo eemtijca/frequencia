@@ -157,3 +157,15 @@ def test_desistencia_na_janela_vira_rotulo_positivo(workspace, pacote_sintetico)
     assert janela["desistiu_na_janela"].all()
     assert janela["rotulo"].all()
     assert not linhas.filter(pl.col("dia") < inicio_janela)["desistiu_na_janela"].any()
+
+
+def test_dobras_do_ensemble_purgam_o_horizonte() -> None:
+    """Nenhum dia de treino da dobra fica a menos de um horizonte da validação."""
+    from frequencia.pipelines.ensemble import _dobras_temporais
+
+    dias = [f"2026-03-{dia:02d}" for dia in range(1, 31)]
+    dobras = _dobras_temporais(dias, 3, purga=7)
+    assert dobras
+    for treino, validacao in dobras:
+        assert dias.index(validacao[0]) - dias.index(treino[-1]) > 7
+    assert _dobras_temporais(dias, 3, purga=0)[0][0][-1] == dias[6]

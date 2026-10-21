@@ -33,7 +33,7 @@ O modelo principal é LightGBM com parâmetros declarativos (config/experimento.
 
 ## Ensemble
 
-Sete membros com vistas diferentes (famílias de modelo e subconjunto curto de features), dobras temporais expansivas com previsões fora da dobra, blending por regressão logística com pesos normalizados e registrados, discordância média como incerteza. Os membros finais são reajustados com treino mais validação e salvos em ensemble/ para reanálise.
+Sete membros com vistas diferentes (famílias de modelo e subconjunto curto de features), dobras temporais expansivas com previsões fora da dobra e purga do horizonte (os sete dias letivos antes de cada bloco de validação saem do treino da dobra), blending por regressão logística com pesos normalizados e registrados, discordância média como incerteza. Os membros finais são reajustados com treino mais validação e salvos em ensemble/ para reanálise.
 
 ## Calibração
 
