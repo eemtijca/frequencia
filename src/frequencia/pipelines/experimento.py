@@ -84,6 +84,7 @@ def executar(
         "versao_modelo": config.versao_modelo,
         "min_app_versao": config.min_app_versao,
     }
+    chave = _chave_configuracao(estado["config"], config.pasta_dataset)
     if forcar:
         estado["etapas"] = {}
         estado_infra.registrar_auditoria(
@@ -91,73 +92,63 @@ def executar(
             alvo=identificador,
             detalhe=justificativa or "sem justificativa informada",
         )
+    elif estado.get("etapas") and estado.get("chave_configuracao") != chave:
+        # Reaproveitar etapas de outra configuração gravaria artefatos que
+        # não correspondem à configuração registrada no estado.
+        estado["etapas"] = {}
+        estado_infra.registrar_auditoria(
+            "experimento.invalidar",
+            alvo=identificador,
+            detalhe="configuração ou dataset diferente da execução anterior",
+        )
+    estado["chave_configuracao"] = chave
+    execucao = _Execucao(estado, caminho_estado)
 
     pacote = dataset_mod.carregar_dataset(config.pasta_dataset)
     dados = pacote["dataset"]
 
     resumo: dict[str, Any] = {"identificador": identificador, "pasta": str(pasta)}
 
-    resultado_treino = _rodar_etapa(
-        estado,
-        caminho_estado,
+    resultado_treino = execucao.rodar(
         "treino",
-        forcar,
         lambda: _executar_treino(config, pasta, dados, detalhado),
     )
     resumo["treino"] = _resumir_treino(resultado_treino)
 
-    resultado_ensemble = _rodar_etapa(
-        estado,
-        caminho_estado,
+    resultado_ensemble = execucao.rodar(
         "ensemble",
-        forcar,
         lambda: _executar_ensemble(config, pasta, dados, detalhado),
     )
     resumo["ensemble"] = _resumir_ensemble(resultado_ensemble)
 
-    resultado_calibracao = _rodar_etapa(
-        estado,
-        caminho_estado,
+    resultado_calibracao = execucao.rodar(
         "calibracao",
-        forcar,
         lambda: _executar_calibracao(config, pasta, detalhado),
     )
     resumo["calibracao"] = resultado_calibracao["resumo"]
 
-    resultado_destilacao = _rodar_etapa(
-        estado,
-        caminho_estado,
+    resultado_destilacao = execucao.rodar(
         "destilacao",
-        forcar,
         lambda: _executar_destilacao(config, pasta, dados, resultado_calibracao, detalhado),
     )
     resumo["destilacao"] = resultado_destilacao
 
-    resultado_avaliacao = _rodar_etapa(
-        estado,
-        caminho_estado,
+    resultado_avaliacao = execucao.rodar(
         "avaliacao",
-        forcar,
         lambda: _executar_avaliacao(config, pasta, dados, resultado_calibracao, detalhado),
     )
     resumo["avaliacao"] = resultado_avaliacao["resumo"]
 
-    resultado_exportacao = _rodar_etapa(
-        estado,
-        caminho_estado,
+    resultado_exportacao = execucao.rodar(
         "exportacao",
-        forcar,
         lambda: _executar_exportacao(
             config, pasta, dados, resultado_calibracao, resultado_avaliacao, detalhado
         ),
     )
     resumo["exportacao"] = resultado_exportacao["resumo"]
 
-    resultado_pacote = _rodar_etapa(
-        estado,
-        caminho_estado,
+    resultado_pacote = execucao.rodar(
         "empacotamento",
-        forcar,
         lambda: _executar_empacotamento(
             config, pasta, resultado_exportacao, resultado_calibracao, resultado_avaliacao, pacote, detalhado
         ),
@@ -670,21 +661,38 @@ def _gravar_estado(caminho: Path, estado: dict) -> None:
         saida.write("\n")
 
 
-def _etapa(estado: dict, nome: str, forcar: bool):
-    """Devolve o resultado gravado de uma etapa concluída, se válido."""
-    if forcar:
-        return None
-    info = estado.get("etapas", {}).get(nome)
-    return info.get("resultado") if info and info.get("estado") == "concluida" else None
+def _chave_configuracao(config: dict, pasta_dataset: Path) -> str:
+    """Impressão digital da configuração e do conteúdo do dataset."""
+    import hashlib
+
+    alvo = Path(pasta_dataset) / "dataset.parquet"
+    conteudo = hash_infra.hash_arquivo(alvo) if alvo.is_file() else ""
+    corpo = json.dumps({"config": config, "dataset": conteudo}, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(corpo.encode("utf-8")).hexdigest()
 
 
-def _rodar_etapa(estado: dict, caminho: Path, nome: str, forcar: bool, acao):
-    """Executa a etapa quando necessário e registra a conclusão no estado."""
-    resultado = _etapa(estado, nome, forcar)
-    if resultado is None:
+class _Execucao:
+    """Controla a idempotência das etapas em ordem.
+
+    Uma etapa concluída é reaproveitada só enquanto nenhuma anterior foi
+    refeita: a partir da primeira etapa executada, todas as seguintes rodam
+    de novo, porque dependem dos artefatos recém-gravados.
+    """
+
+    def __init__(self, estado: dict, caminho: Path) -> None:
+        self._estado = estado
+        self._caminho = caminho
+        self._refazer = False
+
+    def rodar(self, nome: str, acao):
+        info = self._estado.get("etapas", {}).get(nome)
+        concluida = bool(info) and info.get("estado") == "concluida"
+        if concluida and not self._refazer:
+            return info.get("resultado")
         resultado = acao()
-        _concluir_etapa(estado, caminho, nome, _serializavel(resultado))
-    return resultado
+        _concluir_etapa(self._estado, self._caminho, nome, _serializavel(resultado))
+        self._refazer = True
+        return resultado
 
 
 def _serializavel(valor: Any) -> Any:

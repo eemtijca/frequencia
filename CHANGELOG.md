@@ -10,6 +10,8 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 
 ### Corrigido
 
+- Experimento repetido com o mesmo identificador e outra configuração (semente, dobras, versão) ou outro dataset reaproveitava as etapas antigas e gravava a configuração nova no estado; agora uma chave de configuração e dataset invalida o ciclo, e refazer uma etapa refaz as seguintes.
+- Duração do ensemble era medida depois do trabalho e saía sempre zero.
 - Comandos de governança da documentação passavam `--ator` e `--papel` depois do subcomando, posição que a CLI recusa; o painel fazia o mesmo ao disparar promoção e publicação, que falhavam sempre. As opções globais passam a vir antes do grupo, e um teste confere grupos, subcomandos e opções de todo comando citado em bloco bash.
 - Mensagem aprovada de modelo desatualizado corrigida para "use o indicador com cautela até a atualização".
 - Promoção verifica requisitos no motor: candidato exige gates aprovados gravados no registro; homologado e publicado exigem aprovação vigente, e uma rejeição posterior bloqueia. O checklist do painel passa a vir do motor (ADR-018).

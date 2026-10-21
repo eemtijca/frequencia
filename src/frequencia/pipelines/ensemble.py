@@ -75,6 +75,7 @@ def montar(
 
     from frequencia.features.catalogo import NOMES_FEATURES
 
+    inicio = time.time()
     pasta_experimento = Path(pasta_experimento)
     pasta_ensemble = pasta_experimento / "ensemble"
     pasta_ensemble.mkdir(parents=True, exist_ok=True)
@@ -162,7 +163,6 @@ def montar(
     ).write_parquet(pasta_ensemble / "chaves.parquet")
     joblib.dump(meta, pasta_ensemble / "meta.joblib")
 
-    inicio = time.time()
     logs.registrar(
         "experimentos.ensemble",
         estagio="ensemble",

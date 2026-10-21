@@ -42,7 +42,7 @@ docker compose --profile cli run --rm cli frequencia avaliacao validar-gates \
   var/artefatos/experimentos/exp<N>
 ```
 
-Cada etapa é idempotente: reexecutar pula o que concluiu. Interrompido no meio, use `experimentos recuperar <id>`.
+Cada etapa é idempotente: reexecutar com a mesma configuração e o mesmo dataset pula o que concluiu; mudar qualquer um dos dois refaz o ciclo inteiro. Interrompido no meio, use `experimentos recuperar <id>`.
 
 ## RB-03: publicar uma versão homologada
 
