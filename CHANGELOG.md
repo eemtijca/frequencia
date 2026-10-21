@@ -8,34 +8,6 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 
 ## [Não publicado]
 
-### Corrigido
-
-- O MLflow rastreava apenas o LightGBM da etapa de treino, que não é publicado nem usado depois. O ciclo passa a registrar uma run do artefato publicado (métricas de teste e de partida a frio, gates, `modelo.js` e manifesto), e a avaliação compara o publicado com esse modelo de referência.
-- Limiar de alerta fixo em 0,65 ignorava a prevalência: no perfil `padrao`, alertava 0,84% das linhas, com revocação de cerca de 3,6%. A entrada passa a ser derivada da taxa-alvo de alerta (`--taxa-alerta-alvo`, padrão 0,10) na calibração, a saída fica a 70% da entrada, os limiares vivem numa fonte só e novos gates exigem lift de 2,0 e revocação de 0,15 (ADR-023).
-- Cartão do modelo chamava de validação as métricas do teste e não informava os limiares de alerta; a página de configurações listava só parte dos gates; `avaliacao custo-operacional` e `experimentos criar` ignoravam as medidas e a taxa-alvo do alerta.
-- Nenhuma linha de teste tinha histórico abaixo de 30 dias, então aquecimento, grupos de histórico curto e estados iniciais de confiança nunca eram avaliados. Alunos reservados por hash formam as divisões `frio_calibracao` e `frio_teste`, com relatório próprio e gate de ECE quando há volume; sem volume, o gate aparece como não avaliado (ADR-022).
-- Alunos reservados que se matriculam tarde têm histórico curto em qualquer época; as linhas deles em `frio_calibracao` passam a ser limitadas a datas até o fim da validação, e o painel de experimentos mostra os gates não avaliados com o motivo.
-- Gates de ECE e de cobertura liam valores medidos nos dados em que a calibração foi ajustada, e medidas ausentes passavam (`or 0.0` no ECE, `or 1.0` na cobertura, ganho sobre o baseline ausente como zero). O ECE passa a ser medido no teste sobre o preditor publicado, e todo gate com medida ausente reprova.
-- Intervalo conforme publicado era um intervalo de predição para um rótulo binário apresentado como incerteza da probabilidade, com largura média de 0,88 no teste e cobertura declarada sem medição em grupos pequenos. A saída passa a ser `conjunto_conformal` (`[1]`, `[0]` ou `[0, 1]`), com garantia por classe dentro de cada grupo Mondrian e cobertura medida no teste. O contrato de inferência sobe para a versão 2 (ADR-021).
-- Manifesto gravava os limiares de alerta e a confiança padrão em vez dos embutidos no `modelo.js` do mesmo pacote.
-- Calibração de Platt congelada na identidade: o prior era somado à perda média e não perdia peso com o volume de dados (no perfil `padrao`, a=1,0001 e b=0,00008). O prior passa a valer como cerca de cem pseudo-observações (ADR-020).
-- Dupla calibração latente: o estudante era destilado de alvos calibrados e recebia Platt de novo na avaliação e no modelo.js. O estudante passa a destilar o ensemble final sem calibração, e a calibração é ajustada uma única vez na validação, sobre a saída do estudante e com o aquecimento aplicado, que é o preditor publicado (ADR-020).
-- Documentação dizia que a discordância entre membros do ensemble era sinal de incerteza no produto; ela é diagnóstico offline e não chega ao navegador.
-- Dobras temporais do ensemble não purgavam o horizonte: dias de treino imediatamente antes da validação carregavam rótulos que olham para dentro dela. O efeito medido no perfil `padrao` foi pequeno (AUC OOF 0,7301 sem purga contra 0,7287 com purga), mas a regra passa a ser a mesma da separação do dataset.
-- Rótulo censurado pela desistência: quem desistia dentro da janela tinha as faltas truncadas e tendia a rótulo negativo, e quem desistia no primeiro dia saía do dataset. Desistência dentro da janela passa a contar como desfecho positivo, e o gerador sintético liga a chance de desistir à propensão a faltar, com escalada de faltas antes do abandono (ADR-019).
-- Experimento repetido com o mesmo identificador e outra configuração (semente, dobras, versão) ou outro dataset reaproveitava as etapas antigas e gravava a configuração nova no estado; agora uma chave de configuração e dataset invalida o ciclo, e refazer uma etapa refaz as seguintes.
-- Duração do ensemble era medida depois do trabalho e saía sempre zero.
-- Comandos de governança da documentação passavam `--ator` e `--papel` depois do subcomando, posição que a CLI recusa; o painel fazia o mesmo ao disparar promoção e publicação, que falhavam sempre. As opções globais passam a vir antes do grupo, e um teste confere grupos, subcomandos e opções de todo comando citado em bloco bash.
-- Mensagem aprovada de modelo desatualizado corrigida para "use o indicador com cautela até a atualização".
-- Promoção verifica requisitos no motor: candidato exige gates aprovados gravados no registro; homologado e publicado exigem aprovação vigente, e uma rejeição posterior bloqueia. O checklist do painel passa a vir do motor (ADR-018).
-- Reexecutar o ciclo com a mesma `--versao-modelo` regravava a versão no registro, devolvendo uma versão homologada ou publicada a experimental, sem aprovações e com outro artefato; o registro passa a recusar a regravação de versão já promovida e preserva os gates com que ela foi promovida.
-- Publicação valida transição de estado, versão e hash do `modelo.js` contra o registro antes de gravar qualquer arquivo, monta a release em pasta temporária e só então a troca; uma publicação recusada não deixa mais release parcial no canal.
-- Rollback valida a versão alvo antes de retirar a atual do canal e passa a apontar a versão atual do registro para a restaurada.
-- Revogar ou descontinuar a versão publicada deixava o ponteiro de versão atual numa versão descontinuada, e o rollback seguinte falhava; retirar a versão atual agora limpa o ponteiro.
-- Registro de modelos serializa leitura, alteração e gravação sob trava de arquivo, sem perder escritas de tarefas paralelas do painel.
-- Recusa por papel ganha erro próprio (`ErroPermissao`) em vez de aparecer como falta de permissão de pasta, e a tradução de `ValueError` não duplica mais o ponto final.
-- Smoke e fixture do ciclo exigiam aprovação dos gates num perfil de cem alunos, em que o veredito oscila com o ruído. Passam a exigir os gates calculados, e a aprovação é exigida no perfil `padrao` (`make qualidade` e teste lento).
-
 ### Adicionado
 
 - Ecossistema completo de MLOps para o modelo de risco individual de infrequência: geração de dados sintéticos determinísticos, construção de dataset temporal com ponto-in-tempo estrito, catálogo de features versionado com 47 features contratadas, ensemble offline com sete membros e validação temporal, destilação para estudante leve, calibração de Platt regularizada, predição conforme Mondrian por série e faixa de histórico, avaliação com subgrupos, fairness e gates objetivos.
@@ -64,3 +36,33 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 - Estágio de desenvolvimento do Dockerfile com documentação, projetos, governança e skill, e `.dockerignore` ajustado para a guarda editorial completa no container.
 - README com getting started Docker, ciclo pela CLI, serviços, testes e fallback venv; comandos executáveis em blocos bash.
 - Runbooks atualizados para Docker, com inspeção de artefatos, backup e restore do volume.
+- Teste lento de qualidade no perfil `padrao` (`tests/exportacao/test_qualidade.py`), exigido no CI e disponível em `make qualidade` e `make venv-qualidade`.
+- Teste que confere, contra a árvore da CLI, todo comando `frequencia` citado em blocos bash da documentação.
+
+### Corrigido
+
+- O MLflow rastreava apenas o LightGBM da etapa de treino, que não é publicado nem usado depois. O ciclo passa a registrar uma run do artefato publicado (métricas de teste e de partida a frio, gates, `modelo.js` e manifesto), e a avaliação compara o publicado com esse modelo de referência.
+- Limiar de alerta fixo em 0,65 ignorava a prevalência: no perfil `padrao`, alertava 0,84% das linhas, com revocação de cerca de 3,6%. A entrada passa a ser derivada da taxa-alvo de alerta (`--taxa-alerta-alvo`, padrão 0,10) na calibração, a saída fica a 70% da entrada, os limiares vivem numa fonte só e novos gates exigem lift de 2,0 e revocação de 0,15 (ADR-023).
+- Cartão do modelo chamava de validação as métricas do teste e não informava os limiares de alerta; a página de configurações listava só parte dos gates; `avaliacao custo-operacional` e `experimentos criar` ignoravam as medidas e a taxa-alvo do alerta.
+- Nenhuma linha de teste tinha histórico abaixo de 30 dias, então aquecimento, grupos de histórico curto e estados iniciais de confiança nunca eram avaliados. Alunos reservados por hash formam as divisões `frio_calibracao` e `frio_teste`, com relatório próprio e gate de ECE quando há volume; sem volume, o gate aparece como não avaliado (ADR-022).
+- Alunos reservados que se matriculam tarde têm histórico curto em qualquer época; as linhas deles em `frio_calibracao` passam a ser limitadas a datas até o fim da validação, e o painel de experimentos mostra os gates não avaliados com o motivo.
+- Smoke e fixture do ciclo exigiam aprovação dos gates num perfil de cem alunos, em que o veredito oscila com o ruído. Passam a exigir os gates calculados, e a aprovação é exigida no perfil `padrao` (`make qualidade` e teste lento).
+- Gates de ECE e de cobertura liam valores medidos nos dados em que a calibração foi ajustada, e medidas ausentes passavam (`or 0.0` no ECE, `or 1.0` na cobertura, ganho sobre o baseline ausente como zero). O ECE passa a ser medido no teste sobre o preditor publicado, e todo gate com medida ausente reprova.
+- Intervalo conforme publicado era um intervalo de predição para um rótulo binário apresentado como incerteza da probabilidade, com largura média de 0,88 no teste e cobertura declarada sem medição em grupos pequenos. A saída passa a ser `conjunto_conformal` (`[1]`, `[0]` ou `[0, 1]`), com garantia por classe dentro de cada grupo Mondrian e cobertura medida no teste. O contrato de inferência sobe para a versão 2 (ADR-021).
+- Manifesto gravava os limiares de alerta e a confiança padrão em vez dos embutidos no `modelo.js` do mesmo pacote.
+- Calibração de Platt congelada na identidade: o prior era somado à perda média e não perdia peso com o volume de dados (no perfil `padrao`, a=1,0001 e b=0,00008). O prior passa a valer como cerca de cem pseudo-observações (ADR-020).
+- Dupla calibração latente: o estudante era destilado de alvos calibrados e recebia Platt de novo na avaliação e no modelo.js. O estudante passa a destilar o ensemble final sem calibração, e a calibração é ajustada uma única vez na validação, sobre a saída do estudante e com o aquecimento aplicado, que é o preditor publicado (ADR-020).
+- Documentação dizia que a discordância entre membros do ensemble era sinal de incerteza no produto; ela é diagnóstico offline e não chega ao navegador.
+- Dobras temporais do ensemble não purgavam o horizonte: dias de treino imediatamente antes da validação carregavam rótulos que olham para dentro dela. O efeito medido no perfil `padrao` foi pequeno (AUC OOF 0,7301 sem purga contra 0,7287 com purga), mas a regra passa a ser a mesma da separação do dataset.
+- Rótulo censurado pela desistência: quem desistia dentro da janela tinha as faltas truncadas e tendia a rótulo negativo, e quem desistia no primeiro dia saía do dataset. Desistência dentro da janela passa a contar como desfecho positivo, e o gerador sintético liga a chance de desistir à propensão a faltar, com escalada de faltas antes do abandono (ADR-019).
+- Experimento repetido com o mesmo identificador e outra configuração (semente, dobras, versão) ou outro dataset reaproveitava as etapas antigas e gravava a configuração nova no estado; agora uma chave de configuração e dataset invalida o ciclo, e refazer uma etapa refaz as seguintes.
+- Duração do ensemble era medida depois do trabalho e saía sempre zero.
+- Comandos de governança da documentação passavam `--ator` e `--papel` depois do subcomando, posição que a CLI recusa; o painel fazia o mesmo ao disparar promoção e publicação, que falhavam sempre. As opções globais passam a vir antes do grupo, e um teste confere grupos, subcomandos e opções de todo comando citado em bloco bash.
+- Mensagem aprovada de modelo desatualizado corrigida para "use o indicador com cautela até a atualização".
+- Promoção verifica requisitos no motor: candidato exige gates aprovados gravados no registro; homologado e publicado exigem aprovação vigente, e uma rejeição posterior bloqueia. O checklist do painel passa a vir do motor (ADR-018).
+- Reexecutar o ciclo com a mesma `--versao-modelo` regravava a versão no registro, devolvendo uma versão homologada ou publicada a experimental, sem aprovações e com outro artefato; o registro passa a recusar a regravação de versão já promovida e preserva os gates com que ela foi promovida.
+- Publicação valida transição de estado, versão e hash do `modelo.js` contra o registro antes de gravar qualquer arquivo, monta a release em pasta temporária e só então a troca; uma publicação recusada não deixa mais release parcial no canal.
+- Rollback valida a versão alvo antes de retirar a atual do canal e passa a apontar a versão atual do registro para a restaurada.
+- Revogar ou descontinuar a versão publicada deixava o ponteiro de versão atual numa versão descontinuada, e o rollback seguinte falhava; retirar a versão atual agora limpa o ponteiro.
+- Registro de modelos serializa leitura, alteração e gravação sob trava de arquivo, sem perder escritas de tarefas paralelas do painel.
+- Recusa por papel ganha erro próprio (`ErroPermissao`) em vez de aparecer como falta de permissão de pasta, e a tradução de `ValueError` não duplica mais o ponto final.
