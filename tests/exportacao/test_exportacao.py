@@ -193,3 +193,6 @@ def test_limiar_e_histerese_no_pacote(experimento_completo: Path) -> None:
     finally:
         alvo.unlink(missing_ok=True)
     assert obtidos == esperados
+    # Com o limiar derivado da taxa-alvo, a sequência precisa exercitar a
+    # histerese de fato: algum dia liga o alerta.
+    assert any(em_alerta for em_alerta, _ in esperados), "nenhum caso cruzou o limiar de entrada"

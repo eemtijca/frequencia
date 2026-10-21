@@ -17,6 +17,8 @@ GATES_PADRAO = {
     "cobertura_conformal_minima": 0.80,
     "taxa_alerta_maxima": 0.35,
     "melhora_sobre_baseline_minima": 0.0,
+    "lift_alerta_minimo": 2.0,
+    "revocacao_alerta_minima": 0.15,
     "tamanho_pacote_maximo_bytes": 262144,
     "latencia_maxima_ms": 5.0,
     "ece_maximo_partida_a_frio": 0.15,
@@ -36,9 +38,18 @@ def avaliar(
     probabilidades_baseline: np.ndarray | None = None,
     ajuste_calibracao: dict | None = None,
     conformal: dict | None = None,
+    limiar_alerta: float | None = None,
     k_top: int = K_TOP_PADRAO,
 ) -> dict:
-    """Avaliação completa de uma versão do modelo sobre um conjunto."""
+    """Avaliação completa de uma versão do modelo sobre um conjunto.
+
+    limiar_alerta é o limiar de entrada gravado no pacote; sem ele, vale o
+    padrão de confianca.LIMIARES_ALERTA.
+    """
+    if limiar_alerta is None:
+        from frequencia.features.confianca import LIMIARES_ALERTA
+
+        limiar_alerta = float(LIMIARES_ALERTA["entrada"])
     from sklearn.metrics import (
         average_precision_score,
         brier_score_loss,
@@ -62,14 +73,14 @@ def avaliar(
         "ece": round(erro_calibracao_esperado(p, y), 4),
     }
     metricas.update(_precisao_top_k(p, y, k_top, dias=dias))
-    metricas.update(_taxa_alerta(p, y))
+    metricas.update(_taxa_alerta(p, y, limiar_alerta))
 
     relatorio: dict = {"metricas": metricas}
 
     if series is not None:
-        relatorio["por_serie"] = _por_grupo(y, p, series, "serie")
+        relatorio["por_serie"] = _por_grupo(y, p, series, "serie", limiar_alerta)
     if turmas is not None and len(set(turmas)) > 1:
-        relatorio["por_turma"] = _por_grupo(y, p, turmas, "turma")
+        relatorio["por_turma"] = _por_grupo(y, p, turmas, "turma", limiar_alerta)
     if historico is not None:
         relatorio["por_faixa_historico"] = _por_faixa_historico(y, p, historico)
     if dias is not None:
@@ -88,7 +99,7 @@ def avaliar(
     if conformal is not None:
         relatorio["conformal"] = conformal
     if series is not None:
-        relatorio["fairness"] = _fairness(y, p, series, metricas)
+        relatorio["fairness"] = _fairness(y, p, series, metricas, limiar_alerta)
     return relatorio
 
 
@@ -125,20 +136,32 @@ def _precisao_top_k(p: np.ndarray, y: np.ndarray, k: int, dias: list[str] | None
     }
 
 
-def _taxa_alerta(p: np.ndarray, y: np.ndarray, limiar: float = 0.65) -> dict:
-    """Taxa de alerta, falsos positivos e negativos no limiar de entrada."""
+def _taxa_alerta(p: np.ndarray, y: np.ndarray, limiar: float) -> dict:
+    """Taxa, precisão, revocação e lift no limiar de entrada do alerta.
+
+    Mede a linha acima do limiar, antes da histerese de dois dias. O lift é
+    a precisão dividida pela prevalência: quantas vezes um aluno sinalizado
+    é mais provável de ter o desfecho do que um aluno qualquer.
+    """
     alerta = p >= limiar
     fp = int((alerta & (y == 0)).sum())
     fn = int((~alerta & (y == 1)).sum())
+    vp = int((alerta & (y == 1)).sum())
+    prevalencia = float(y.mean()) if len(y) else 0.0
+    precisao = vp / int(alerta.sum()) if alerta.any() else None
     return {
+        "limiar_alerta": round(float(limiar), 4),
         "taxa_alerta": round(float(alerta.mean()), 4),
+        "precisao_alerta": round(precisao, 4) if precisao is not None else None,
+        "revocacao_alerta": round(vp / max(1, int(y.sum())), 4),
+        "lift_alerta": round(precisao / prevalencia, 4) if precisao is not None and prevalencia > 0 else None,
         "falsos_positivos": fp,
         "falsos_negativos": fn,
         "alertas_por_dia_estimado": round(float(alerta.mean() * 100), 2),
     }
 
 
-def _por_grupo(y, p, grupos: list[str], rotulo: str) -> list[dict]:
+def _por_grupo(y, p, grupos: list[str], rotulo: str, limiar: float) -> list[dict]:
     """Métricas por grupo, com proteção contra grupos sem as duas classes."""
     from sklearn.metrics import roc_auc_score
 
@@ -154,9 +177,9 @@ def _por_grupo(y, p, grupos: list[str], rotulo: str) -> list[dict]:
         }
         if len(np.unique(y[mascara])) == 2:
             parciais["auc"] = round(float(roc_auc_score(y[mascara], p[mascara])), 4)
-            parciais["taxa_alerta"] = round(float((p[mascara] >= 0.65).mean()), 4)
+            parciais["taxa_alerta"] = round(float((p[mascara] >= limiar).mean()), 4)
             parciais["revocacao"] = round(
-                float(((p[mascara] >= 0.65) & (y[mascara] == 1)).sum() / max(1, int(y[mascara].sum()))),
+                float(((p[mascara] >= limiar) & (y[mascara] == 1)).sum() / max(1, int(y[mascara].sum()))),
                 4,
             )
         saida.append(parciais)
@@ -203,7 +226,7 @@ def _por_periodo(y, p, dias: list[str]) -> list[dict]:
     return saida
 
 
-def _fairness(y, p, series: list[str], metricas: dict) -> dict:
+def _fairness(y, p, series: list[str], metricas: dict, limiar: float) -> dict:
     """Fairness básico: dispersão de revocação e de taxa de alerta."""
     revocacoes = []
     taxas = []
@@ -211,7 +234,7 @@ def _fairness(y, p, series: list[str], metricas: dict) -> dict:
         mascara = np.asarray([g == nome for g in series])
         if mascara.sum() < 20 or y[mascara].sum() == 0:
             continue
-        alerta = p[mascara] >= 0.65
+        alerta = p[mascara] >= limiar
         revocacoes.append(float((alerta & (y[mascara] == 1)).sum() / max(1, int(y[mascara].sum()))))
         taxas.append(float(alerta.mean()))
     if len(revocacoes) < 2:
@@ -260,6 +283,8 @@ def validar_gates(
         "melhora_sobre_baseline": _no_minimo(
             comparacao.get("ganho_absoluto"), limiares["melhora_sobre_baseline_minima"]
         ),
+        "lift_alerta": _no_minimo(metricas.get("lift_alerta"), limiares["lift_alerta_minimo"]),
+        "revocacao_alerta": _no_minimo(metricas.get("revocacao_alerta"), limiares["revocacao_alerta_minima"]),
     }
     if tamanho_pacote_bytes is not None:
         vereditos["tamanho_pacote"] = _no_maximo(

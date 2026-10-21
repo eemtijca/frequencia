@@ -48,7 +48,7 @@ A ordem é fixa e idêntica em Python e JavaScript, garantida pelo teste de pari
 4. Aquecimento: p = peso * p_cal + (1 - peso) * taxa_base, com peso = min(1, historico_dias / 30).
 5. Conjunto conforme: com os limiares do grupo (série por faixa de histórico), a classe 0 entra quando p <= `negativo` e a classe 1 entra quando p >= `positivo`; grupo desconhecido ou conjunto vazio devolve `[0, 1]`.
 6. Estado de confiança a partir de historico_dias, idade do modelo e cobertura de chamada.
-7. Histerese: alerta liga após dois dias acima do limiar de entrada (padrão 0,65) e desliga abaixo do limiar de saída (padrão 0,45).
+7. Histerese: alerta liga após dois dias acima do limiar de entrada e desliga abaixo do limiar de saída. Os dois vêm de `limiares_alerta` no manifesto e são derivados no treino da taxa-alvo de alerta (padrão 10% dos alunos acima da entrada; saída a 70% da entrada), ADR-023.
 
 ## Perfis de dados
 

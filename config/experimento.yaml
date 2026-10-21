@@ -6,6 +6,8 @@ versao_modelo: ""
 min_app_versao: 1.4.0
 tentativas_optuna: 0
 dobras_ensemble: 3
+# Fração-alvo de alunos acima do limiar de entrada do alerta (ADR-023).
+taxa_alerta_alvo: 0.10
 
 # Parâmetros do modelo principal (LightGBM) quando a busca está desligada.
 parametros:

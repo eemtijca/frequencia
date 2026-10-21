@@ -13,6 +13,9 @@ Uma versão só anda para frente com todos os gates aprovados. Os limites vivem 
 | cobertura_conformal | Cobertura mínima 0,80 | Menor cobertura por classe dos conjuntos conformes, medida no teste |
 | taxa_alerta | Máxima 0,35 | Custo operacional da coordenação |
 | melhora_sobre_baseline | Mínima 0 | Ganho sobre as regras simples |
+| lift_alerta | Mínimo 2,0 | Precisão do alerta dividida pela prevalência: o aluno sinalizado tem ao menos o dobro da chance média |
+| revocacao_alerta | Mínima 0,15 | Fração dos desfechos que o alerta alcança |
+| ece_partida_a_frio | ECE máximo 0,15 nos alunos reservados | Calibração no início do histórico; sem volume, fica em `nao_avaliados` |
 | tamanho_pacote | Máximo 256 KiB | Leveza para celular modesto |
 | latencia | Máxima 5 ms | Resposta no navegador |
 

@@ -25,6 +25,10 @@ NIVEL_CONFORMAL = 0.90
 # abaixo disso o grupo devolve o conjunto completo {0, 1}, sem informação.
 MINIMO_POR_CLASSE = 20
 METODO_CONFORMAL = "conjuntos_mondrian_por_classe"
+# Limiar de alerta: fração-alvo de linhas acima do limiar de entrada no
+# conjunto de calibração, e saída proporcional à entrada (ADR-023).
+TAXA_ALERTA_ALVO = 0.10
+RAZAO_SAIDA_ALERTA = 0.7
 FAIXAS_HISTORICO = (0, 14, 30, 10**6)
 NOMES_FAIXAS = ("curto", "medio", "longo")
 
@@ -307,6 +311,34 @@ def avaliar_conjuntos(
         "fracao_conjuntos_unitarios": round(float((tamanhos == 1).mean()), 4) if len(tamanhos) else None,
         "fracao_conjunto_0": round(float(np.mean([c == [0] for c in conjuntos])), 4) if conjuntos else None,
         "fracao_conjunto_1": round(float(np.mean([c == [1] for c in conjuntos])), 4) if conjuntos else None,
+    }
+
+
+def limiares_alerta(
+    probabilidades: np.ndarray,
+    taxa_alvo: float = TAXA_ALERTA_ALVO,
+    razao_saida: float = RAZAO_SAIDA_ALERTA,
+) -> dict:
+    """Limiares de entrada e saída do alerta a partir da taxa-alvo.
+
+    O limiar fixo de 0,65 ignorava a prevalência: com 15% de positivos, quase
+    nenhuma linha passava dele e o alerta não disparava. A entrada passa a
+    ser o quantil 1 - taxa_alvo da probabilidade publicada no conjunto de
+    calibração, e a saída fica abaixo dela pela razão dada, preservando a
+    histerese. A taxa-alvo traduz a capacidade de acompanhamento da escola.
+    """
+    from frequencia.features.confianca import LIMIARES_ALERTA
+
+    if not 0 < taxa_alvo < 1:
+        msg = f"Taxa-alvo de alerta precisa estar entre 0 e 1, recebida {taxa_alvo}."
+        raise ValueError(msg)
+    p = np.asarray(probabilidades, dtype=float)
+    entrada = float(np.quantile(p, 1 - taxa_alvo)) if len(p) else float(LIMIARES_ALERTA["entrada"])
+    return {
+        "entrada": round(entrada, 6),
+        "saida": round(entrada * razao_saida, 6),
+        "dias_consecutivos_entrada": int(LIMIARES_ALERTA["dias_consecutivos_entrada"]),
+        "taxa_alvo": taxa_alvo,
     }
 
 

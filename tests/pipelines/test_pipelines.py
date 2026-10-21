@@ -306,3 +306,26 @@ def test_gate_de_partida_a_frio_nao_avaliado_fica_explicito() -> None:
     ruim = avaliacao.validar_gates({**base, "partida_a_frio": {"avaliado": True, "calibracao": {"ece": 0.4}}})
     assert ruim["vereditos"]["ece_partida_a_frio"] is False
     assert not ruim["aprovado"]
+
+
+def test_limiar_de_alerta_segue_a_taxa_alvo() -> None:
+    """A entrada deixa a fração-alvo acima dela, e a saída fica abaixo."""
+    rng = np.random.default_rng(4)
+    p = rng.beta(1.5, 8.0, 20000)
+    limiares = calibracao.limiares_alerta(p, 0.10)
+    assert abs((p >= limiares["entrada"]).mean() - 0.10) < 0.005
+    assert limiares["saida"] < limiares["entrada"]
+    assert limiares["dias_consecutivos_entrada"] == 2
+
+
+def test_avaliacao_mede_lift_e_revocacao_no_limiar() -> None:
+    """Métricas de alerta usam o limiar informado, não um valor fixo."""
+    from frequencia.pipelines import avaliacao
+
+    p = np.array([0.9, 0.8, 0.3, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+    y = np.array([1, 0, 1, 0, 0, 0, 0, 0, 0, 0])
+    metricas = avaliacao.avaliar(p, y, limiar_alerta=0.75)["metricas"]
+    assert metricas["taxa_alerta"] == 0.2
+    assert metricas["precisao_alerta"] == 0.5
+    assert metricas["revocacao_alerta"] == 0.5
+    assert metricas["lift_alerta"] == 2.5

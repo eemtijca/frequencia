@@ -52,3 +52,4 @@
 | [020](adr/020-calibracao-unica-fora-da-amostra.md) | Calibração única, fora da amostra, sobre o preditor publicado. |
 | [021](adr/021-conjuntos-conformes.md) | Conjuntos de predição conformes por classe no lugar do intervalo. |
 | [022](adr/022-partida-a-frio.md) | Alunos reservados para avaliar a partida a frio. |
+| [023](adr/023-limiar-de-alerta-por-taxa-alvo.md) | Limiar de alerta derivado da taxa-alvo. |

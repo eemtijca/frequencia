@@ -68,8 +68,11 @@ def executar(
     dobras: int = typer.Option(3, help="Dobras temporais do ensemble."),
     versao_modelo: str = typer.Option("", help="Versão explícita do modelo gerado."),
     min_app: str = typer.Option("1.4.0", help="Versão mínima do FrequenciApp."),
+    taxa_alerta_alvo: float = typer.Option(
+        0.10, help="Fração-alvo de alunos acima do limiar de entrada do alerta (capacidade da escola)."
+    ),
 ) -> None:
-    """Executa o ciclo completo: treino, ensemble, calibração, destilação,
+    """Executa o ciclo completo: treino, ensemble, destilação, calibração,
     avaliação, exportação e empacotamento, com idempotência por etapa."""
     contexto = _ctx(ctx)
     try:
@@ -91,6 +94,7 @@ def executar(
             dobras_ensemble=dobras,
             versao_modelo=versao_modelo,
             min_app_versao=min_app,
+            taxa_alerta_alvo=taxa_alerta_alvo,
         )
         resumo = experimento_mod.executar(
             config,

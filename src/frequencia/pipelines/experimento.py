@@ -64,6 +64,7 @@ class ConfigExperimento:
     dobras_ensemble: int = 3
     versao_modelo: str = ""
     min_app_versao: str = "1.4.0"
+    taxa_alerta_alvo: float = calibracao_mod.TAXA_ALERTA_ALVO
     detalhes: dict = field(default_factory=dict)
 
 
@@ -88,6 +89,7 @@ def executar(
         "dobras_ensemble": config.dobras_ensemble,
         "versao_modelo": config.versao_modelo,
         "min_app_versao": config.min_app_versao,
+        "taxa_alerta_alvo": config.taxa_alerta_alvo,
     }
     chave = _chave_configuracao(estado["config"], config.pasta_dataset)
     if forcar:
@@ -293,13 +295,15 @@ def _executar_calibracao(
         bruto, ajuste.a_platt, ajuste.b_platt, ajuste.taxa_base, historico
     )
     curva = calibracao_mod.curva_aprendizado(publicadas, rotulos, historico)
+    limiares = calibracao_mod.limiares_alerta(publicadas, config.taxa_alerta_alvo)
     corpo = {
         "resumo": {
             **ajuste.para_dict(),
             "linhas_calibracao": int(calibracao.height),
             "curva_aprendizado": curva,
+            "limiares_alerta": limiares,
         },
-        "ajuste": ajuste.para_dict(),
+        "ajuste": {**ajuste.para_dict(), "limiares_alerta": limiares},
     }
     with (pasta / "calibracao.json").open("w", encoding="utf-8") as saida:
         json.dump(corpo["resumo"], saida, ensure_ascii=False, indent=2, sort_keys=True)
@@ -351,6 +355,7 @@ def _executar_avaliacao(
         probabilidades_baseline=baseline_prob,
         ajuste_calibracao=ajuste_dict,
         conformal=conformal,
+        limiar_alerta=ajuste["limiares_alerta"]["entrada"],
     )
     relatorio["curva_aprendizado"] = ajuste_dict.get("curva_aprendizado", [])
     relatorio["partida_a_frio"] = _avaliar_partida_a_frio(dados, estudante, ajuste)
@@ -398,6 +403,7 @@ def _avaliar_partida_a_frio(dados: pl.DataFrame, estudante, ajuste: dict) -> dic
         publicadas,
         rotulos,
         historico=historico,
+        limiar_alerta=ajuste["limiares_alerta"]["entrada"],
         conformal=calibracao_mod.avaliar_conjuntos(publicadas, rotulos, chaves, ajuste["limiares_conformal"]),
     )
     return {
@@ -451,11 +457,7 @@ def _executar_exportacao(
             "limiares": ajuste["limiares_conformal"],
             "cobertura_teste": resultado_avaliacao["resumo"].get("conformal", {}),
         },
-        "limiares_alerta": {
-            "entrada": 0.65,
-            "saida": 0.45,
-            "dias_consecutivos_entrada": 2,
-        },
+        "limiares_alerta": ajuste["limiares_alerta"],
         "confianca": {
             "aquecimento_dias": 30,
             "validade_modelo_dias": 180,

@@ -21,7 +21,7 @@ O manifest.json é o documento que o FrequenciApp lê antes de qualquer coisa. O
 | contrato | objeto | features (ordem fixa), padroes e tipos. |
 | calibracao | objeto | a_platt, b_platt e taxa_base, ajustados no conjunto de validação sobre a saída do estudante. |
 | conformal | objeto | nível, método, limiares por grupo e classe (`negativo` e `positivo`) e cobertura medida no teste. |
-| limiares_alerta | objeto | entrada, saída e dias_consecutivos_entrada. |
+| limiares_alerta | objeto | entrada, saída, dias_consecutivos_entrada e a taxa_alvo da qual entrada e saída foram derivadas; idênticos aos do `modelo.js` do pacote. |
 | confianca | objeto | aquecimento_dias e validade_modelo_dias. |
 | mensagens | objeto | Vocabulário aprovado por estado de confiança. |
 | perfis_dados | lista | Perfis suportados com confiabilidade. |
