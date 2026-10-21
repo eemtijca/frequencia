@@ -54,19 +54,31 @@ def test_rotulo_so_usa_janela_futura(dataset_construido) -> None:
 
 
 def test_ponto_no_tempo_estrito_difere_do_atual(workspace, pacote_sintetico) -> None:
-    """Com correções retroativas, o estrito difere do atual nas features."""
-    resultado = dataset_mod.construir(
+    """Com correções retroativas, o estrito difere do atual nas features.
+
+    O gerador produz chamadas salvas com atraso, faltas removidas depois e
+    justificativas tardias; o modo atual enxerga esses eventos no passado,
+    o estrito não. Se os dois datasets saíssem iguais, o ponto no tempo
+    estrito não estaria fazendo nada.
+    """
+    from frequencia.features.catalogo import NOMES_FEATURES
+
+    estrito = dataset_mod.construir(
         dataset_mod.ConfigDataset(pasta_dados=pacote_sintetico, ponto_no_tempo="estrito", versao="estrito2")
-    )
-    resultado_atual = dataset_mod.construir(
+    )["dataset"]
+    atual = dataset_mod.construir(
         dataset_mod.ConfigDataset(pasta_dados=pacote_sintetico, ponto_no_tempo="atual", versao="atual2")
-    )
-    # Ambos concluem com o mesmo formato de contrato.
-    assert resultado["meta"]["resumo"]["linhas"] >= 0
-    assert resultado_atual["meta"]["resumo"]["linhas"] >= 0
-    # A validação de ausência de futuro cobre a diferença semântica.
-    veredito = dataset_mod.validar_ausencia_de_futuro(resultado["pasta"])
-    assert veredito["verificado"]
+    )["dataset"]
+    pares = estrito.join(atual, on=["aluno_id", "dia"], suffix="_atual")
+    assert pares.height > 0
+    diferentes = [
+        nome
+        for nome in NOMES_FEATURES
+        if (pares[nome].cast(pl.Float64) - pares[f"{nome}_atual"].cast(pl.Float64)).abs().max() > 1e-9
+    ]
+    assert diferentes, "estrito e atual produziram as mesmas features"
+    # Os rótulos vêm do estado final nos dois modos e não podem diferir.
+    assert (pares["rotulo"] == pares["rotulo_atual"]).all()
 
 
 def test_validacao_de_futuro_por_reconstrucao(dataset_construido) -> None:
