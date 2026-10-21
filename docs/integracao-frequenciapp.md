@@ -4,7 +4,7 @@ Contrato e orientações para o lado do app consumir o pacote. Este documento n�
 
 ## Mapa de features
 
-Cada feature do contrato mapeia para os dados que o app já guarda. O mapa executável vive em `frequencia integracao` (módulo) e a versão JSON em `gravar_contrato`; aqui vai o resumo por grupo.
+Cada feature do contrato mapeia para os dados que o app já guarda. O mapa executável vive em `src/frequencia/integracao/contrato.py`, e a versão JSON é gerada por `gravar_contrato`; aqui vai o resumo por grupo.
 
 | Grupo do contrato | De onde o app calcula |
 | --- | --- |

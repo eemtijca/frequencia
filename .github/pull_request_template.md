@@ -36,6 +36,17 @@ Informe os comandos executados e, quando aplicável, os passos de interface. Cap
 
 Descreva riscos, variáveis de ambiente novas, mudanças de contrato de features, manifesto ou pacote e mudanças incompatíveis. Use "Não se aplica" quando não houver.
 
+## Pesquisa e inovação
+
+Use "Não se aplica" quando a mudança não for de pesquisa ou inovação.
+
+- [ ] O protocolo está registrado em `projetos/risco-infrequencia/experimentos/<slug>/protocolo.md`.
+- [ ] O baseline e a validação temporal estão descritos.
+- [ ] Métricas, gates, subgrupos e fairness foram avaliados.
+- [ ] O resultado negativo ou a decisão de rejeição foi registrado.
+- [ ] A mudança estrutural tem ADR.
+- [ ] O pacote de evidências permite reproduzir o experimento.
+
 ## Impacto de versão
 
 Aplique a etiqueta `versao:` correspondente ao impacto: `versao: maior` para mudança incompatível, `versao: menor` para funcionalidade nova compatível e `versao: correcao` para correção compatível. Enquanto a primeira versão pública não é lançada, a versão permanece em `0.1.0` e o changelog acumula na seção Não publicado.

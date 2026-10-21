@@ -34,6 +34,18 @@ body:
     validations:
       required: false
   - type: textarea
+    id: hipotese
+    attributes:
+      label: Hipótese e evidência
+      description: Se a proposta for uma pesquisa, descreva a hipótese, a evidência atual e como ela seria validada.
+      placeholder: |
+        Hipótese:
+        Evidência atual:
+        Como validar:
+        O que mudaria a opinião:
+    validations:
+      required: false
+  - type: textarea
     id: criterios
     attributes:
       label: Critérios de aceite

@@ -1,4 +1,5 @@
-# Reduz a imagem Docker ao necessário: código, dados sintéticos e scripts.
+# Reduz o contexto de build. O estágio de desenvolvimento inclui documentação,
+# projetos, governança e a skill de agentes para validar a guarda editorial.
 .venv
 var
 .git
@@ -9,16 +10,7 @@ __pycache__
 .pytest_cache
 .ruff_cache
 .mypy_cache
-docs
-projetos
-INSTRUCOES.md
-CHANGELOG.md
-CONTRIBUTING.md
-SECURITY.md
-AGENTS.md
-.pre-commit-config.yaml
-docker-compose.yml
-.github
+.hypothesis
 dist
 build
 *.egg-info
@@ -26,3 +18,4 @@ build
 .nox
 .editorconfig
 .pre-commit-config.yaml
+docker-compose.yml

@@ -11,7 +11,13 @@ Fontes externas de contexto educacional usadas pelo FrequencIA, com licenças, g
 | IDEB | INEP | Escola, rede, município e estado | Bienal | Contexto por série no catálogo de features |
 | Indicadores de rendimento escolar | INEP | Escola e série | Anual | Taxas de abandono, aprovação e reprovação agregadas |
 
-As URLs oficiais e as condições completas estão no catálogo interno (`frequencia dados listar-fontes`) e em `src/frequencia/dados/mec.py`.
+As URLs oficiais e as condições completas estão no catálogo interno. Para consultar no caminho padrão:
+
+```bash
+docker compose --profile cli run --rm -T --no-deps cli frequencia dados listar-fontes
+```
+
+No fallback venv, ative o ambiente e troque o prefixo Docker por `frequencia`.
 
 ## Licenças e restrições
 
@@ -35,7 +41,10 @@ O pacote publicado carrega esses valores em contexto-mec.json para uso offline d
 ## Importação de dados reais
 
 ```bash
-frequencia dados importar <pasta> --origem mec --licenca "CC BY 4.0"
+docker compose --profile cli run --rm cli frequencia dados importar \
+  <pasta> \
+  --origem mec \
+  --licenca "CC BY 4.0"
 ```
 
 O fluxo valida o esquema, roda o detector de PII, grava a cópia em var/dados/importados com hash da pasta inteira e registra o manifesto de importação. A base legal não é exigida para origem mec (dados abertos agregados), mas é obrigatória para origem institucional.

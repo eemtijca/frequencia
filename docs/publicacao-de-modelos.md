@@ -18,22 +18,53 @@ Uma versão só anda para frente com todos os gates aprovados. Os limites vivem 
 
 O comando `avaliacao validar-gates` aplica os gates com o tamanho e a latência medidos da exportação, e o resultado fica gravado em gates.json do experimento.
 
+Os gates respondem "podemos?". A revisão científica responde "devemos?". Mudanças estruturais precisam das duas; o método está em [ciencia-e-inovacao.md](ciencia-e-inovacao.md).
+
 ## Fluxo de promoção
 
+Os comandos abaixo usam Docker. No fallback venv, ative o ambiente e troque o prefixo Docker por `frequencia`.
+
 ```bash
-# 1. ciclo completo com gates aprovados
-frequencia experimentos executar <dataset> --identificador exp1
+# 1. Ciclo completo com gates aprovados
+docker compose --profile cli run --rm cli frequencia experimentos executar \
+  var/dados/processados/<dataset> \
+  --identificador exp1 \
+  --versao-modelo <versao-modelo>
 
-# 2. promoção com papel de aprovador
-frequencia registro promover risco-infrequencia <versao> --estado candidato
-frequencia registro promover risco-infrequencia <versao> --estado homologado
+# 2. Aprovação e promoção com papel de aprovador
+docker compose --profile cli run --rm cli frequencia registro aprovar \
+  risco-infrequencia <versao> \
+  --comentario "gates e documentação revisados" \
+  --ator <pessoa> \
+  --papel aprovador
 
-# 3. publicação do pacote homologado
-frequencia publicacao publicar var/pacotes/risco-infrequencia-<versao> <versao>
+docker compose --profile cli run --rm cli frequencia registro promover \
+  risco-infrequencia <versao> \
+  --estado candidato \
+  --justificativa "gates aprovados" \
+  --ator <pessoa> \
+  --papel aprovador
 
-# 4. conferência pós-publicação
-frequencia publicacao verificar-hash <versao>
-frequencia publicacao verificar-compatibilidade <versao> --versao-app 1.4.0
+docker compose --profile cli run --rm cli frequencia registro promover \
+  risco-infrequencia <versao> \
+  --estado homologado \
+  --justificativa "revisão concluída" \
+  --ator <pessoa> \
+  --papel aprovador
+
+# 3. Publicação do pacote homologado
+docker compose --profile cli run --rm cli frequencia publicacao publicar \
+  var/pacotes/risco-infrequencia-<versao> \
+  <versao> \
+  --notas "<notas>" \
+  --ator <pessoa> \
+  --papel aprovador
+
+# 4. Conferência pós-publicação
+docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao verificar-hash <versao>
+docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao verificar-compatibilidade \
+  <versao> \
+  --versao-app 1.4.0
 ```
 
 No painel web, o mesmo fluxo mora na página Registro e promoção (com checklist e confirmação dupla) e na página Publicação (com rollback e revogação).

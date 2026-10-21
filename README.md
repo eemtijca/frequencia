@@ -10,27 +10,106 @@ Motor científico do FrequenciApp: treina, avalia, empacota e publica modelos le
 
 O primeiro modelo estima, para cada estudante, a probabilidade de acumular pelo menos duas faltas nos próximos sete dias letivos. A previsão vira um indicador de apoio no painel da coordenação: nunca uma decisão automática, sempre sujeita a revisão humana. O artefato publicado é um arquivo JavaScript puro de poucos kilobytes, com calibração, intervalos de confiança, estados de confiança e histerese embutidos, que roda inteiramente no PWA, offline, em celular modesto.
 
-<details>
-<summary>Sumário</summary>
+## Começando em 5 minutos
 
-- [Recursos](#recursos)
-- [Stack](#stack)
-- [Pré-requisitos](#pré-requisitos)
-- [Começando](#começando)
-- [Como usar](#como-usar)
-- [Arquitetura](#arquitetura)
-- [Testes e qualidade](#testes-e-qualidade)
-- [Execução com Docker](#execução-com-docker)
-- [Privacidade](#privacidade)
-- [Segurança](#segurança)
-- [Documentação](#documentação)
-- [Governança](#governança)
-- [Contribuindo](#contribuindo)
-- [Suporte](#suporte)
-- [Créditos](#créditos)
-- [Licença](#licença)
+### Pré-requisitos
 
-</details>
+- Docker com Compose v2.
+- Git.
+- Cerca de 2 GB de espaço livre.
+
+Python 3.12 e Node.js 20 ou superior são necessários apenas no caminho venv de fallback. O host com Python 3.15 não é suportado.
+
+### Suba o ambiente
+
+```bash
+git clone https://github.com/eemtijca/frequencia.git
+cd frequencia
+docker compose up --build -d
+docker compose ps
+```
+
+O painel fica em http://localhost:8501 e o MLflow em http://localhost:5000. Aguarde os serviços aparecerem como `healthy`.
+
+### Valide o ciclo completo
+
+```bash
+docker compose --profile ciclo up smoke
+```
+
+A saída termina com `Smoke test concluído com sucesso`. A primeira execução baixa dependências e pode demorar alguns minutos.
+
+### Rode o ciclo pela CLI
+
+```bash
+# 1. Gere dados sintéticos
+docker compose --profile cli run --rm cli frequencia dados gerar-sintetico \
+  --perfil fumaca \
+  --destino var/dados/sinteticos/demo \
+  --semente 20261018
+
+# 2. Passe pelo portão de privacidade
+docker compose --profile cli run --rm cli frequencia privacidade validar-entrada-treino \
+  var/dados/sinteticos/demo
+
+# 3. Construa o dataset temporal
+docker compose --profile cli run --rm cli frequencia datasets construir \
+  var/dados/sinteticos/demo \
+  --versao demo \
+  --ponto-no-tempo estrito
+
+# 4. Execute o ciclo completo
+docker compose --profile cli run --rm cli frequencia experimentos executar \
+  var/dados/processados/demo \
+  --identificador demo \
+  --versao-modelo 2026.10.20-demo
+
+# 5. Confira os gates
+docker compose --profile cli run --rm cli frequencia avaliacao validar-gates \
+  var/artefatos/experimentos/demo
+```
+
+### Veja os artefatos
+
+```bash
+docker compose --profile cli run --rm -T --no-deps cli ls -la var/artefatos/experimentos/demo
+docker compose --profile cli run --rm -T --no-deps cli ls -la var/pacotes
+```
+
+### Pare o ambiente
+
+```bash
+docker compose down
+```
+
+O comando preserva o volume `dados`. Para remover também os dados do volume, use com cuidado:
+
+```bash
+docker compose down -v
+```
+
+### Fallback com venv
+
+Use apenas quando Docker não estiver disponível e houver Python 3.12.
+
+```bash
+python3.12 --version
+bash scripts/setup.sh
+source .venv/bin/activate
+bash scripts/smoke.sh
+```
+
+O volume `dados` do Docker é separado do `var/` local do venv. Escolha um caminho e registre qual foi usado.
+
+## Perfis de uso
+
+| Perfil | Comece por |
+| --- | --- |
+| Quero ver o painel | Suba o ambiente com Docker e abra http://localhost:8501 |
+| Quero rodar o ciclo | Use o smoke acima ou o ciclo pela CLI |
+| Quero desenvolver | [CONTRIBUTING.md](CONTRIBUTING.md) e [AGENTS.md](AGENTS.md) |
+| Quero operar com um agente | [.agents/skills/frequencia/SKILL.md](.agents/skills/frequencia/SKILL.md) |
+| Quero pesquisar e inovar | [docs/ciencia-e-inovacao.md](docs/ciencia-e-inovacao.md) |
 
 ## Recursos
 
@@ -56,38 +135,79 @@ O primeiro modelo estima, para cada estudante, a probabilidade de acumular pelo 
 - typer 0.27 para a CLI; Streamlit 1.66 para o painel; presidio-analyzer 2.2 em modo padrão reforçado com regras próprias de português.
 - pytest 9 e Hypothesis 6 para a suíte de testes.
 
-## Pré-requisitos
+## Serviços do Compose
 
-- Python 3.12 e Node.js 20 ou superior (o Node executa o teste de paridade do modelo.js).
-- Docker com Compose no modo recomendado, ou venv puro para a execução direta.
+| Serviço | Papel | Porta |
+| --- | --- | --- |
+| `mlflow` | servidor de rastreamento com SQLite em volume | 5000 |
+| `app` | painel Streamlit de governança | 8501 |
+| `cli` | comandos pontuais na imagem de desenvolvimento | sem porta |
+| `smoke` | ciclo completo na imagem de desenvolvimento | sem porta |
 
-## Começando
-
-Caminho venv, validado ponta a ponta:
-
-```bash
-bash scripts/setup.sh        # cria o .venv com Python 3.12 e dependências pinadas
-bash scripts/smoke.sh        # gera dados, constrói dataset, treina, exporta, valida paridade e roda a suíte
-bash scripts/demo.sh         # sobe o painel de governança em http://localhost:8501
-```
-
-O smoke test gera dados sintéticos, executa o ciclo completo do experimento (treino, ensemble, calibração, destilação, avaliação, exportação e empacotamento), confere os gates de promoção, valida a paridade entre a previsão Python e a JavaScript e roda os 68 testes automatizados. Tudo em poucos minutos numa máquina comum.
+O volume `dados` compartilha `var/` entre os serviços. Experimento feito na CLI aparece no painel e no smoke.
 
 ## Como usar
 
-1. Gere ou importe dados: `frequencia dados gerar-sintetico --perfil fumaca`.
-2. Passe pelo portão de privacidade: `frequencia privacidade validar-entrada-treino <pasta>`.
-3. Construa o dataset temporal: `frequencia datasets construir <pasta> --versao v1`.
-4. Execute o ciclo completo: `frequencia experimentos executar <dataset> --identificador exp1`.
-5. Confira os gates: `frequencia avaliacao validar-gates var/artefatos/experimentos/exp1`.
-6. Promova e publique com o papel de aprovador: `frequencia publicacao publicar var/pacotes/risco-infrequencia-<versao> <versao>`.
-7. Entregue o zip de `var/pacotes/` ao FrequenciApp: ele lê o manifesto e decide.
+O ciclo completo está descrito em [INSTRUCOES.md](INSTRUCOES.md). Os comandos essenciais:
 
-Os detalhes de cada comando estão em `frequencia <grupo> --help`, e o passo a passo com interface em [INSTRUCOES.md](INSTRUCOES.md).
+```bash
+# Ajuda geral e por grupo
+docker compose --profile cli run --rm -T --no-deps cli frequencia --help
+docker compose --profile cli run --rm -T --no-deps cli frequencia experimentos --help
+
+# Ciclo mínimo
+docker compose --profile cli run --rm cli frequencia dados gerar-sintetico \
+  --perfil fumaca
+
+docker compose --profile cli run --rm cli frequencia privacidade validar-entrada-treino \
+  var/dados/sinteticos/perfil-fumaca
+
+docker compose --profile cli run --rm cli frequencia datasets construir \
+  var/dados/sinteticos/perfil-fumaca \
+  --versao v1
+
+docker compose --profile cli run --rm cli frequencia experimentos executar \
+  var/dados/processados/v1 \
+  --identificador exp1
+
+docker compose --profile cli run --rm cli frequencia avaliacao validar-gates \
+  var/artefatos/experimentos/exp1
+```
+
+Promoção e publicação exigem uma pessoa aprovadora:
+
+```bash
+docker compose --profile cli run --rm cli frequencia registro aprovar \
+  risco-infrequencia <versao> \
+  --comentario "gates e documentação revisados" \
+  --ator <pessoa> \
+  --papel aprovador
+
+docker compose --profile cli run --rm cli frequencia registro promover \
+  risco-infrequencia <versao> \
+  --estado candidato \
+  --justificativa "gates aprovados" \
+  --ator <pessoa> \
+  --papel aprovador
+
+docker compose --profile cli run --rm cli frequencia registro promover \
+  risco-infrequencia <versao> \
+  --estado homologado \
+  --justificativa "revisão concluída" \
+  --ator <pessoa> \
+  --papel aprovador
+
+docker compose --profile cli run --rm cli frequencia publicacao publicar \
+  var/pacotes/risco-infrequencia-<versao> \
+  <versao> \
+  --notas "o que mudou para a escola" \
+  --ator <pessoa> \
+  --papel aprovador
+```
 
 ## Arquitetura
 
-Uma arvore em camadas com dependência apontando para dentro: infraestrutura transversal, dados, privacidade, features, pipelines, modelos, distribuição, monitoramento e integração, expostos pela CLI e pelo painel web. O TabFM do Google Research orienta os princípios de ensemble, calibração, limites explícitos e separação entre configuração e artefato, sem incorporar runtime nem pesos.
+Uma árvore em camadas com dependência apontando para dentro: infraestrutura transversal, dados, privacidade, features, pipelines, modelos, distribuição, monitoramento e integração, expostos pela CLI e pelo painel web. O TabFM do Google Research orienta os princípios de ensemble, calibração, limites explícitos e separação entre configuração e artefato, sem incorporar runtime nem pesos.
 
 ```mermaid
 flowchart LR
@@ -107,41 +227,45 @@ As camadas, o fluxo completo e o mapeamento entre responsabilidades e pastas est
 
 ## Testes e qualidade
 
-| Comando | Efeito |
-| --- | --- |
-| `bash scripts/smoke.sh` | Ciclo completo mais suíte de testes com dados sintéticos. |
-| `make test` | Suíte pytest com 68 testes, incluindo paridade Python e Node. |
-| `make lint` | ruff no código-fonte e nos testes. |
-| `make tipo` | mypy nos módulos do pacote. |
-| `make formato-check` | Confere a formatação sem alterar arquivos. |
-| `make dicionario` | Regenera o dicionário de features. |
-| `make etiquetas` | Sincroniza as etiquetas do GitHub com o catálogo. |
-
-A convenção das suítes está em [docs/testes.md](docs/testes.md) e a guarda editorial roda junto da suíte, herdando o padrão de texto do FrequenciApp.
-
-## Execução com Docker
+Os alvos do Makefile usam Docker por padrão. Os alvos `venv-*` são fallback com Python 3.12.
 
 ```bash
-cp .env.example .env
-docker compose up --build        # sobe MLflow (5000) e o painel (8501)
-docker compose --profile ciclo up smoke   # roda o smoke test dentro do contêiner
+# Docker
+make formato-check
+make lint
+make tipo
+make test
+make smoke
+
+# Fallback venv
+make venv-formato-check
+make venv-lint
+make venv-tipo
+make venv-test
+make venv-smoke
 ```
 
-O caminho Docker é construído e validado no CI: o workflow `testes.yml` sobe o MLflow e o painel, confere a saúde dos dois serviços e executa o ciclo completo no container. A imagem de runtime é a usada pelo painel e pelo MLflow; a imagem de desenvolvimento, com Node 20 e testes, roda o smoke. O caminho venv continua sendo o mais rápido para o desenvolvimento local. Detalhes em [INSTRUCOES.md](INSTRUCOES.md).
+Equivalentes diretos:
+
+```bash
+docker compose --profile cli run --rm -T --no-deps cli ruff format --check src tests
+docker compose --profile cli run --rm -T --no-deps cli ruff check src tests
+docker compose --profile cli run --rm -T --no-deps cli mypy src/frequencia
+docker compose --profile cli run --rm -T --no-deps cli python -m pytest tests -q
+docker compose --profile ciclo up smoke
+```
+
+A convenção das suítes está em [docs/testes.md](docs/testes.md) e a guarda editorial roda junto da suíte, herdando o padrão de texto do FrequenciApp.
 
 ## Privacidade
 
 Dados pessoais reais de alunos não entram no repositório, nos artefatos, nos logs nem nos pacotes. O gerador sintético é determinístico e sem pessoas reais; o portão de privacidade bloqueia dataset com PII detectada antes do treino; a inferência publicada roda no navegador e não envia nada a servidores. Detalhes e papéis da LGPD em [docs/privacidade-lgpd.md](docs/privacidade-lgpd.md).
 
-## Segurança
-
-Vulnerabilidades são reportadas em canal privado, nunca em issue pública. Use o [advisory privado do GitHub](https://github.com/eemtijca/frequencia/security/advisories/new) ou o canal indicado no perfil do repositório. A pipeline valida esquemas antes de qualquer ingestão, registra hash e licença de cada importação e traduz toda falha para português claro. O repositório usa CodeQL, secret scanning e Dependabot com security updates. A política completa está em [SECURITY.md](SECURITY.md).
-
 ## Documentação
 
 | Documento | Conteúdo |
 | --- | --- |
-| [INSTRUCOES.md](INSTRUCOES.md) | Como executar o ciclo em venv e Docker e navegar pelas interfaces. |
+| [INSTRUCOES.md](INSTRUCOES.md) | Como executar o ciclo em Docker e no fallback venv. |
 | [docs/arquitetura.md](docs/arquitetura.md) | Camadas, fluxo de dados e decisões registradas. |
 | [docs/modelo-de-dados.md](docs/modelo-de-dados.md) | Esquema sintético e mapeamento com o FrequenciApp. |
 | [docs/catalogo-de-modelos.md](docs/catalogo-de-modelos.md) | Modelos, estados e o projeto de risco de infrequência. |
@@ -149,6 +273,14 @@ Vulnerabilidades são reportadas em canal privado, nunca em issue pública. Use 
 | [docs/contrato-de-inferencia.md](docs/contrato-de-inferencia.md) | Entrada, saída e casos de teste da inferência no navegador. |
 | [docs/contrato-de-manifesto.md](docs/contrato-de-manifesto.md) | Campos do manifest.json lido pelo app. |
 | [docs/mlops.md](docs/mlops.md) | Como treinar, avaliar, calibrar e publicar. |
+| [docs/publicacao-de-modelos.md](docs/publicacao-de-modelos.md) | Gates, promoção, release, rollback e revogação. |
+| [docs/retreinamento-e-recalibracao.md](docs/retreinamento-e-recalibracao.md) | Sinais, cadência e procedimentos de reanálise. |
+| [docs/runbooks.md](docs/runbooks.md) | Procedimentos operacionais passo a passo. |
+| [docs/testes.md](docs/testes.md) | Suítes, convenções e cobertura. |
+| [docs/ciencia-e-inovacao.md](docs/ciencia-e-inovacao.md) | Método científico, funil de inovação e critérios de decisão. |
+| [docs/templates/](docs/templates/) | Brief, protocolo, nota de pesquisa, revisão, rubrica e pacote de evidências. |
+| [docs/guia-do-cientista.md](docs/guia-do-cientista.md) | Guia humano do time de ML e ciência de dados. |
+| [docs/guia-da-coordenacao.md](docs/guia-da-coordenacao.md) | Guia humano de uso do indicador na escola. |
 | [docs/privacidade-lgpd.md](docs/privacidade-lgpd.md) | Dados tratados, bases legais e direitos do titular. |
 | [docs/integracao-frequenciapp.md](docs/integracao-frequenciapp.md) | Mapa de features, feature flags e vocabulário aprovado. |
 | [docs/releases.md](docs/releases.md) | Política de versões, tags, artefatos e suporte. |
@@ -161,7 +293,10 @@ O projeto segue o modelo de governança do FrequenciApp, adaptado ao stack Pytho
 - [CONTRIBUTING.md](CONTRIBUTING.md): issues, etiquetas, branches, commits, pull requests, testes, documentação e releases.
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md): norma de convivência da comunidade.
 - [SECURITY.md](SECURITY.md): canal privado, práticas adotadas e limitações.
-- [AGENTS.md](AGENTS.md): regras para agentes de IA e para o fluxo de mudanças.
+- [AGENTS.md](AGENTS.md): regras para agentes de IA no desenvolvimento.
+- [.agents/skills/frequencia/SKILL.md](.agents/skills/frequencia/SKILL.md): manual operacional para agentes de IA.
+- [docs/ciencia-e-inovacao.md](docs/ciencia-e-inovacao.md): diretrizes de ciência e inovação.
+- [docs/guia-do-cientista.md](docs/guia-do-cientista.md) e [docs/guia-da-coordenacao.md](docs/guia-da-coordenacao.md): guias humanos do time técnico e da escola.
 - [docs/releases.md](docs/releases.md): versionamento, tags e artefatos publicados.
 - [docs/adr/](docs/adr/): decisões de arquitetura registradas.
 
@@ -169,7 +304,7 @@ A `main` é protegida por rulesets: pull request obrigatório, checks verdes, re
 
 ## Contribuindo
 
-Leia o [CONTRIBUTING.md](CONTRIBUTING.md) antes de propor mudanças. Toda issue e todo pull request recebem etiqueta de tipo e de área; o catálogo fica em `.github/labels.json` e é sincronizado com `make etiquetas`. Commits seguem Conventional Commits em português, a guarda editorial reprova travessão, aspas curvas e setas, e decisões estruturais ganham ADR. Agentes de IA seguem o [AGENTS.md](AGENTS.md).
+Leia o [CONTRIBUTING.md](CONTRIBUTING.md) antes de propor mudanças. Toda issue e todo pull request recebem etiqueta de tipo e de área; o catálogo fica em `.github/labels.json` e é sincronizado com `make etiquetas`. Commits seguem Conventional Commits em português, a guarda editorial reprova travessão, aspas curvas e setas, e decisões estruturais ganham ADR. Agentes de IA seguem o [AGENTS.md](AGENTS.md) no desenvolvimento e o [SKILL.md](.agents/skills/frequencia/SKILL.md) na operação.
 
 ## Suporte
 
