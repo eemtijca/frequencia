@@ -9,7 +9,7 @@ Modelos do ecossistema, com estados, público e situação de manutenção. O la
 | Identificador | risco-infrequencia |
 | Unidade | aluno por dia de referência |
 | Horizonte | sete dias letivos seguintes |
-| Rótulo | duas ou mais faltas (F ou FJ) no horizonte, contando enquanto matriculado |
+| Rótulo | duas ou mais faltas (F ou FJ) no horizonte, ou desistência dentro dele (ADR-019) |
 | Runtime alvo | js-m2cgen no navegador do PWA |
 | Consumo | painel do dia e relatório por aluno, como indicador de apoio |
 | Artefato | estudante LightGBM destilado com invólucro de confiança |

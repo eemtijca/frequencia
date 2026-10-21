@@ -126,3 +126,34 @@ def test_curva_de_aprendizado_cresce_com_historico() -> None:
     curva = calibracao.curva_aprendizado(p, y, historico)
     assert len(curva) >= 2
     assert curva[-1]["auc"] > curva[0]["auc"], curva
+
+
+def test_desistencia_na_janela_vira_rotulo_positivo(workspace, pacote_sintetico) -> None:
+    """Quem desiste dentro da janela tem rótulo positivo, mesmo sem faltas nela.
+
+    Inclui o caso extremo de desistir no primeiro dia da janela, quando o
+    aluno não tem nenhuma linha no período e uma junção interna o perderia.
+    """
+    config = dataset_mod.ConfigDataset(pasta_dados=pacote_sintetico, versao="desistencia", min_historico=5)
+    dias = sorted(pl.read_csv(pacote_sintetico / "frequencias.csv")["dia"].unique().to_list())
+    mantidos = set(dataset_mod.construir(config)["dataset"]["dia"].to_list())
+    # Véspera mantida no dataset (fora das faixas de purga) com histórico.
+    vespera = max(d for d in mantidos if dias.index(d) < len(dias) - 8)
+    desistencia = dias[dias.index(vespera) + 1]
+
+    alunos = pl.read_csv(pacote_sintetico / "alunos.csv", null_values=[""])
+    alvo = alunos.filter(pl.col("desistente_em").is_null() & (pl.col("criado_em") <= dias[0]))["aluno_id"][0]
+    alunos.with_columns(
+        pl.when(pl.col("aluno_id") == alvo)
+        .then(pl.lit(desistencia))
+        .otherwise(pl.col("desistente_em"))
+        .alias("desistente_em")
+    ).write_csv(pacote_sintetico / "alunos.csv")
+
+    linhas = dataset_mod.construir(config)["dataset"].filter(pl.col("aluno_id") == alvo)
+    assert vespera in linhas["dia"].to_list(), "a véspera da desistência precisa continuar no dataset"
+    inicio_janela = dias[dias.index(desistencia) - 7]
+    janela = linhas.filter(pl.col("dia") >= inicio_janela)
+    assert janela["desistiu_na_janela"].all()
+    assert janela["rotulo"].all()
+    assert not linhas.filter(pl.col("dia") < inicio_janela)["desistiu_na_janela"].any()

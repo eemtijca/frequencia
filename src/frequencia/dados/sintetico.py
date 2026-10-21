@@ -145,12 +145,23 @@ MOMENTOS_ENTRADA_PESO = (("aula_1", 30), ("aula_2", 30), ("pausa", 40))
 
 PROBABILIDADE_TRANSFERENCIA = 0.05
 PROBABILIDADE_DESISTENCIA = 0.025
+# A desistência acompanha a propensão a faltar (risco relativo proporcional,
+# com média da população perto de PROBABILIDADE_DESISTENCIA) e é precedida
+# por escalada de faltas, como nos sistemas de alerta precoce de abandono.
+PROPENSAO_MEDIA = 0.05
+DIAS_ESCALADA_DESISTENCIA = 10
+FATOR_ESCALADA_DESISTENCIA = 2.5
 PROBABILIDADE_ALUNO_NOVO = 0.05
 PROBABILIDADE_CHAMADA_TARDIA = 0.05
 PROBABILIDADE_JUSTIFICATIVA_TARDIA = 0.08
 PROBABILIDADE_FALTA_REMOVIDA = 0.03
 PROPORCAO_CRONICA = 0.08
 LIMITE_ANO = 2020, 2100
+
+
+def chance_desistencia(propensao: float) -> float:
+    """Probabilidade de desistir no ano, proporcional à propensão a faltar."""
+    return min(0.5, PROBABILIDADE_DESISTENCIA * propensao / PROPENSAO_MEDIA)
 
 
 @dataclass
@@ -351,7 +362,7 @@ def gerar(
                             rng.integers(len(dias) // 4, max(len(dias) // 4 + 1, 3 * len(dias) // 4))
                         )
                         transferido_em = dias[indice_transferencia].isoformat()
-                    desiste = bool(rng.random() < PROBABILIDADE_DESISTENCIA)
+                    desiste = bool(rng.random() < chance_desistencia(propensao))
                     desistente_em = None
                     if desiste:
                         indice_desistencia = int(
@@ -510,6 +521,9 @@ def _simular_aluno(
     aulas_por_turma.setdefault(turma_atual, aulas_da_turma)
     aulas_por_turma.setdefault(turma_de_origem, aulas_da_turma)
 
+    posicao_dia = {dia.isoformat(): indice for indice, dia in enumerate(dias)}
+    posicao_desistencia = posicao_dia.get(desistente_em) if desistente_em is not None else None
+
     sequencia = 0
     for dia in dias:
         iso = dia.isoformat()
@@ -544,6 +558,11 @@ def _simular_aluno(
         vesp_feriado = _dias_ate_feriado(dia) == 1
         if vesp_feriado:
             fator *= 1.3
+        if (
+            posicao_desistencia is not None
+            and 0 < posicao_desistencia - posicao_dia[iso] <= DIAS_ESCALADA_DESISTENCIA
+        ):
+            fator *= FATOR_ESCALADA_DESISTENCIA
 
         if sequencia > 0:
             ausente = bool(rng.random() < (0.55 if cronico else 0.35))

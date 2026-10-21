@@ -10,6 +10,7 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 
 ### Corrigido
 
+- Rótulo censurado pela desistência: quem desistia dentro da janela tinha as faltas truncadas e tendia a rótulo negativo, e quem desistia no primeiro dia saía do dataset. Desistência dentro da janela passa a contar como desfecho positivo, e o gerador sintético liga a chance de desistir à propensão a faltar, com escalada de faltas antes do abandono (ADR-019).
 - Experimento repetido com o mesmo identificador e outra configuração (semente, dobras, versão) ou outro dataset reaproveitava as etapas antigas e gravava a configuração nova no estado; agora uma chave de configuração e dataset invalida o ciclo, e refazer uma etapa refaz as seguintes.
 - Duração do ensemble era medida depois do trabalho e saía sempre zero.
 - Comandos de governança da documentação passavam `--ator` e `--papel` depois do subcomando, posição que a CLI recusa; o painel fazia o mesmo ao disparar promoção e publicação, que falhavam sempre. As opções globais passam a vir antes do grupo, e um teste confere grupos, subcomandos e opções de todo comando citado em bloco bash.

@@ -4,7 +4,7 @@ Guia de bolso para usar o indicador de risco de infrequência no dia a dia da es
 
 ## O que é o indicador
 
-É uma probabilidade entre 0 e 1 de o estudante acumular duas ou mais faltas nos próximos sete dias letivos. Ele vem do histórico de chamadas, faltas, saídas e entradas que a escola já registra. O cálculo acontece no aparelho da coordenação; nada é enviado a servidores externos.
+É uma probabilidade entre 0 e 1 de o estudante acumular duas ou mais faltas nos próximos sete dias letivos, ou de deixar a escola nesse período. Ele vem do histórico de chamadas, faltas, saídas e entradas que a escola já registra. O cálculo acontece no aparelho da coordenação; nada é enviado a servidores externos.
 
 O indicador é calculado a partir de padrões de frequência. Ele não mede caráter, família, esforço ou intenção.
 

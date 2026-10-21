@@ -3,7 +3,10 @@
 
 Para cada dia de referência D, as features vêm do snapshot as-of do fim de D
 (ponto-in-tempo estrito) e o rótulo vem dos 7 dias letivos seguintes no
-estado final. A separação treino/validação/teste é por tempo, com intervalo
+estado final: positivo com pelo menos duas faltas na janela ou com
+desistência dentro dela. Sem a segunda condição, quem desiste no começo da
+janela teria as faltas truncadas e rótulo negativo justamente no desfecho
+mais grave (ADR-019). A separação treino/validação/teste é por tempo, com intervalo
 de purga do tamanho do horizonte entre blocos, para que nenhum rótulo
 atravesse a fronteira.
 """
@@ -80,15 +83,14 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
 
     # Rótulos a partir do diário final, por aluno e janela futura.
     faltou_final = diario_final.select("aluno_id", "dia", "faltou")
+    desistencias = tabelas["alunos"].select("aluno_id", "desistente_em")
     por_dia: list[pl.DataFrame] = []
     for dia in dias_referencia:
         janela = _dias_letivos_apos(dias, dia, config.horizonte_dias_letivos)
-        rotulos = (
+        faltas_janela = (
             faltou_final.filter(pl.col("dia").is_in(janela))
             .group_by("aluno_id")
             .agg(pl.col("faltou").sum().alias("faltas_futuras"))
-            .with_columns((pl.col("faltas_futuras") >= config.limiar_rotulo).alias("rotulo"))
-            .select("aluno_id", "faltas_futuras", "rotulo")
         )
         instante = None if config.ponto_no_tempo == "atual" else f"{dia}{FIM_DIA}"
         diario_asof = diario_mod.materializar(tabelas, instante=instante, ate_dia=dia)
@@ -99,7 +101,26 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
             feriados=feriados,
             dias_restantes_periodo=sum(1 for d in dias if d > dia),
         )
-        frame = frame.join(rotulos, on="aluno_id", how="inner")
+        # Junção pela esquerda: quem desiste no primeiro dia da janela não
+        # tem nenhuma linha nela, e uma junção interna o descartaria.
+        frame = (
+            frame.join(faltas_janela, on="aluno_id", how="left")
+            .with_columns(pl.col("faltas_futuras").fill_null(0))
+            .join(desistencias.rename({"desistente_em": "_desistente_em"}), on="aluno_id", how="left")
+            .with_columns(
+                (
+                    pl.col("_desistente_em").is_not_null()
+                    & (pl.col("_desistente_em") > dia)
+                    & (pl.col("_desistente_em") <= janela[-1])
+                ).alias("desistiu_na_janela")
+            )
+            .with_columns(
+                ((pl.col("faltas_futuras") >= config.limiar_rotulo) | pl.col("desistiu_na_janela")).alias(
+                    "rotulo"
+                )
+            )
+            .drop("_desistente_em")
+        )
         frame = frame.filter(
             (pl.col("historico_dias") >= config.min_historico) & pl.col("rotulo").is_not_null()
         )
@@ -134,6 +155,13 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
         "taxa_rotulo": round(
             float(dataset.select(pl.col("rotulo").cast(pl.Float64).mean()).item(0, 0) or 0.0), 4
         ),
+        "positivos_por_desistencia": int(
+            dataset.filter(
+                pl.col("desistiu_na_janela") & (pl.col("faltas_futuras") < config.limiar_rotulo)
+            ).height
+        )
+        if "desistiu_na_janela" in dataset.columns
+        else 0,
         "divisao": dataset.group_by("divisao")
         .agg(
             pl.len().alias("linhas"),

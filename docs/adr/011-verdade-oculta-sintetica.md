@@ -13,7 +13,7 @@ Sem dados reais no repositório, a avaliação do modelo precisa de sinal aprend
 - Cada aluno sintético nasce com propensão latente (crônicos em cerca de 8%, com propensão entre 0,12 e 0,19; episódicos com propensão quadrática baixa), perfil de justificativa, perfil de saída e perfil de entrada, tudo derivado da semente.
 - O comportamento diário mistura a propensão latente com sazonalidade (dia da semana, mês, véspera de feriado), persistência de sequência (0,55 para crônicos e 0,35 para episódicos) e correções retroativas (justificativa adicionada depois, falta removida, chamada salva com atraso).
 - A tabela `verdade_oculta/verdade_oculta.csv` guarda a propensão e os perfis por aluno e fica FORA das tabelas do contrato: nunca entra como feature, e a validação de esquema e os testes confirmam o isolamento.
-- O rótulo do dataset continua derivado do comportamento observado (duas ou mais faltas nos próximos sete dias letivos), não da propensão: o modelo aprende o comportamento, e a verdade oculta serve para avaliar ordenação (correlação entre risco previsto e propensão latente) em análises da camada de avaliação.
+- O rótulo do dataset continua derivado do comportamento observado (duas ou mais faltas nos próximos sete dias letivos, ou desistência dentro deles, ADR-019), não da propensão: o modelo aprende o comportamento, e a verdade oculta serve para avaliar ordenação (correlação entre risco previsto e propensão latente) em análises da camada de avaliação.
 
 ## Consequências
 
