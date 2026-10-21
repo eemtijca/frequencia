@@ -19,6 +19,7 @@ O rastreamento de experimentos precisa rodar local, sem servidor externo e sem c
 
 - A suíte de testes roda sem servidor: o cliente MLflow conversa com SQLite por URI de arquivo, e o experimento de smoke cria o banco no workspace temporário.
 - No compose, o painel e a CLI compartilham o mesmo servidor e o histórico sobrevive a reinícios pelo volume.
+- O servidor do compose só aceita os `Host` listados em `--allowed-hosts` (`mlflow:5000`, `localhost:5000` e `127.0.0.1:5000`), proteção do MLflow 3 contra DNS rebinding. Como a falha de rastreamento é silenciosa por desenho, um host faltando faz o ciclo rodar sem registrar nada; o teste `tests/infra/test_compose.py` confere que todo cliente do compose usa um host liberado.
 - Backup do histórico é cópia de arquivo (mlflow.db mais a pasta de artefatos), sem infraestrutura adicional.
 
 ## Alternativas consideradas

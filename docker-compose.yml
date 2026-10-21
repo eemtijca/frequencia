@@ -1,5 +1,8 @@
 # Ambiente completo do FrequencIA em containers separados.
 # mlflow: servidor de rastreamento com backend SQLite e artefatos em volume.
+#   O servidor só aceita os Host listados em --allowed-hosts (proteção contra
+#   DNS rebinding): sem "mlflow:5000", os outros serviços recebem 403 e o
+#   rastreamento falha em silêncio.
 # app: Streamlit de governança apontando para o MLflow do compose.
 # cli: comandos pontuais na imagem de desenvolvimento, com a árvore de trabalho.
 # smoke: perfil de ciclo único que roda e valida os smoke tests no venv do
@@ -18,6 +21,7 @@ services:
       --backend-store-uri sqlite:////dados/mlflow/mlflow.db
       --artifacts-destination /dados/mlflow/artifacts
       --host 0.0.0.0 --port 5000
+      --allowed-hosts mlflow:5000,localhost:5000,127.0.0.1:5000
     ports:
       - "5000:5000"
     volumes:
