@@ -192,3 +192,16 @@ def test_retirar_versao_nunca_fica_bloqueado(workspace: Path) -> None:
     """Descontinuar não depende de gates nem de aprovação."""
     _registrar("v1", "h")
     estado_infra.promover_modelo(IDENTIFICADOR, "v1", "descontinuado", ator="ana", papel="engenheiro")
+
+
+def test_rollback_depois_de_revogacao(workspace: Path, tmp_path: Path) -> None:
+    """Revogar a atual não impede restaurar a anterior."""
+    for versao in ("v1", "v2"):
+        pasta, hash_modelo = _pacote_falso(tmp_path, versao)
+        _registrar(versao, hash_modelo)
+        _homologar(versao)
+        publicacao.publicar(pasta, versao_modelo=versao, ator="bia")
+    publicacao.revogar("v2", ator="bia", motivo="erro no pacote")
+    assert publicacao.versao_atual() is None
+    publicacao.reverter("v1", ator="bia", motivo="volta à anterior")
+    assert publicacao.versao_atual()["versao"] == "v1"

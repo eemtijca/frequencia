@@ -13,6 +13,7 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 - Promoção verifica requisitos no motor: candidato exige gates aprovados gravados no registro; homologado e publicado exigem aprovação vigente, e uma rejeição posterior bloqueia. O checklist do painel passa a vir do motor (ADR-018).
 - Publicação valida transição de estado, versão e hash do `modelo.js` contra o registro antes de gravar qualquer arquivo, monta a release em pasta temporária e só então a troca; uma publicação recusada não deixa mais release parcial no canal.
 - Rollback valida a versão alvo antes de retirar a atual do canal e passa a apontar a versão atual do registro para a restaurada.
+- Revogar ou descontinuar a versão publicada deixava o ponteiro de versão atual numa versão descontinuada, e o rollback seguinte falhava; retirar a versão atual agora limpa o ponteiro.
 - Registro de modelos serializa leitura, alteração e gravação sob trava de arquivo, sem perder escritas de tarefas paralelas do painel.
 - Recusa por papel ganha erro próprio (`ErroPermissao`) em vez de aparecer como falta de permissão de pasta, e a tradução de `ValueError` não duplica mais o ponto final.
 

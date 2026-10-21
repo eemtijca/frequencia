@@ -182,7 +182,7 @@ def reverter(
         estado_infra.validar_promocao(IDENTIFICADOR, versao_anterior, "publicado", papel=papel)
 
     atual = versao_atual()
-    if atual and atual["versao"] != versao_anterior:
+    if atual and atual["versao"] != versao_anterior and atual["situacao"] == "publicado":
         registro_mod.descontinuar(IDENTIFICADOR, atual["versao"], ator=ator, motivo=motivo or "rollback")
         descontinuada = caminhos.caminho("publicacoes") / atual["versao"]
         if descontinuada.exists():

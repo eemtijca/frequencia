@@ -300,6 +300,10 @@ def promover_modelo(
                 "publicado_em": _agora_iso(),
                 "ator": ator,
             }
+        elif registro["modelos"][identificador].get("atual") == versao:
+            # Versão retirada deixa de ser a atual: sem isso, revogar deixava o
+            # ponteiro numa versão descontinuada e o rollback seguinte falhava.
+            registro["modelos"][identificador]["atual"] = None
     registrar_auditoria(
         "modelo.promover",
         alvo=f"{identificador}@{versao}",
