@@ -43,6 +43,15 @@ class ErroConfiguracao(ExcecaoFrequencia):
     """Configuração declarativa ausente ou inválida."""
 
 
+class ErroPermissao(ExcecaoFrequencia):
+    """Papel declarado sem direito à operação pedida.
+
+    Separado de PermissionError, que a tradução reserva para falhas de acesso
+    a arquivos: misturar os dois fazia uma recusa de papel aparecer como
+    problema de permissão de pasta.
+    """
+
+
 def traduzir_erro(exc: Exception) -> str:
     """Converte qualquer exceção em frase curta e acionável."""
     if isinstance(exc, ExcecaoFrequencia):
@@ -54,7 +63,7 @@ def traduzir_erro(exc: Exception) -> str:
     if isinstance(exc, IsADirectoryError):
         return "O caminho informado é uma pasta, mas um arquivo era esperado."
     if isinstance(exc, ValueError):
-        return f"Valor inválido: {exc}."
+        return f"Valor inválido: {str(exc).rstrip('.')}."
     if isinstance(exc, KeyError):
         return f"Chave ausente: {exc}. Verifique o contrato do documento."
     if isinstance(exc, TimeoutError):
