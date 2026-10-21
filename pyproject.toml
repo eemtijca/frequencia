@@ -21,7 +21,7 @@ classifiers = [
 ]
 
 # Todas as dependências são fixadas por versão exata para reprodutibilidade
-# do caminho venv e do caminho Docker. Substituições exigem ADR (ver docs/adr/0007).
+# do caminho venv e do caminho Docker. Substituições exigem ADR (ver docs/adr/007-stack-fixada.md).
 dependencies = [
   "polars==2.0.0",
   "pandas==3.0.6",

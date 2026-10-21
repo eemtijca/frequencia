@@ -170,7 +170,7 @@ O ciclo grava `gates.json` mesmo quando o veredito é reprovado. `avaliacao vali
 | Comando | Quando usar | Flags e efeitos |
 | --- | --- | --- |
 | `registro registrar <identificador> <versao>` | Registrar artefato manual ou externo | `--artefato`; `--validade` |
-| `registro promover <identificador> <versao>` | Promover entre estados | `--estado`; `--justificativa`; homologado e publicado exigem `--papel aprovador` |
+| `registro promover <identificador> <versao>` | Promover entre estados | `--estado`; `--justificativa`; candidato exige gates aprovados; homologado e publicado exigem aprovação vigente e a opção global `--papel aprovador`, antes do grupo |
 | `registro descontinuar <identificador> <versao>` | Descontinuar com motivo | `--motivo` |
 | `registro arquivar <identificador> <versao>` | Retirar do ciclo ativo | sem flags específicas |
 | `registro atualizar-estado <identificador> <versao>` | Atualizar situação com validação | `--situacao` |
@@ -183,7 +183,7 @@ O ciclo grava `gates.json` mesmo quando o veredito é reprovado. `avaliacao vali
 
 | Comando | Quando usar | Flags e efeitos |
 | --- | --- | --- |
-| `publicacao publicar <pacote> <versao>` | Publicar no canal local | `--notas`; exige `--papel aprovador`; valide o pacote antes |
+| `publicacao publicar <pacote> <versao>` | Publicar no canal local | `--notas`; exige a opção global `--papel aprovador`, antes do grupo; recusa pacote com hash diferente do registrado |
 | `publicacao release <versao>` | Listar arquivos do release local | sem flags específicas |
 | `publicacao verificar-compatibilidade <versao>` | Conferir versão mínima do app | `--versao-app` |
 | `publicacao verificar-hash <versao>` | Conferir hash do modelo publicado | sem flags específicas |
@@ -251,32 +251,32 @@ docker compose --profile cli run --rm cli frequencia empacotamento validar \
 
 ```bash
 # Aprovação, promoção e publicação, sempre com pessoa aprovadora
-docker compose --profile cli run --rm cli frequencia registro aprovar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro aprovar \
   risco-infrequencia 2026.10.20-demo \
-  --comentario "gates conferidos e documentação revisada" \
-  --ator <pessoa> \
-  --papel aprovador
+  --comentario "gates conferidos e documentação revisada"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia 2026.10.20-demo \
   --estado candidato \
-  --justificativa "gates aprovados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "gates aprovados"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia 2026.10.20-demo \
   --estado homologado \
-  --justificativa "revisão concluída" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "revisão concluída"
 
-docker compose --profile cli run --rm cli frequencia publicacao publicar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao publicar \
   var/pacotes/risco-infrequencia-2026.10.20-demo \
   2026.10.20-demo \
-  --notas "primeira versão homologada" \
-  --ator <pessoa> \
-  --papel aprovador
+  --notas "primeira versão homologada"
 ```
 
 ## Manutenção

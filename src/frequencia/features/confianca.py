@@ -39,7 +39,7 @@ VOCABULARIO_MENSAGENS = {
     "em_observacao": "Indicador em observação por pouco histórico.",
     "confianca_moderada": "Indicador com confiança moderada.",
     "confianca_alta": "Indicador com boa confiança.",
-    "modelo_desatualizado": "Modelo desatualizado: valor o indicador até a atualização.",
+    "modelo_desatualizado": "Modelo desatualizado: use o indicador com cautela até a atualização.",
     "alerta_ativo": "Atenção sugerida: acompanhar este estudante na próxima semana.",
     "alerta_encerrado": "Indicador normalizado.",
 }

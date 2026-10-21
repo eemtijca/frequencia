@@ -33,8 +33,14 @@ def disparar(
     *,
     rotulo: str = "",
     workspace: Path | None = None,
+    papel: str | None = None,
+    ator: str = "painel",
 ) -> dict:
-    """Dispara um comando da CLI em fundo e devolve o recibo da tarefa."""
+    """Dispara um comando da CLI em fundo e devolve o recibo da tarefa.
+
+    Papel e ator são opções globais da CLI e precisam vir antes do grupo;
+    passados depois do subcomando, a CLI os recusa e a tarefa falha.
+    """
     identificador = f"tarefa-{uuid.uuid4().hex[:8]}"
     pasta_logs = caminhos.caminho("logs") / "tarefas"
     pasta_logs.mkdir(parents=True, exist_ok=True)
@@ -46,7 +52,10 @@ def disparar(
     if workspace is not None:
         ambiente["FREQUENCIA_WORKSPACE"] = str(workspace)
 
-    comando = [executavel_cli(), "--silencioso", *argumentos]
+    globais = ["--silencioso"]
+    if papel is not None:
+        globais += ["--ator", ator, "--papel", papel]
+    comando = [executavel_cli(), *globais, *argumentos]
     with alvo_log.open("w", encoding="utf-8") as saida:
         saida.write(f"# {rotulo or ' '.join(argumentos)}\n")
         saida.flush()

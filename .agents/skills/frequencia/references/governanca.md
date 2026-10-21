@@ -54,27 +54,27 @@ Promoção a homologado ou publicado exige papel de aprovador. A aprovação é 
 docker compose --profile cli run --rm -T --no-deps cli frequencia registro listar
 
 # 2. Registrar a aprovação humana
-docker compose --profile cli run --rm cli frequencia registro aprovar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro aprovar \
   risco-infrequencia <versao> \
-  --comentario "gates e documentação revisados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --comentario "gates e documentação revisados"
 
 # 3. Promover para candidato
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia <versao> \
   --estado candidato \
-  --justificativa "gates aprovados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "gates aprovados"
 
 # 4. Promover para homologado
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia <versao> \
   --estado homologado \
-  --justificativa "revisão concluída" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "revisão concluída"
 ```
 
 ## Checklist de publicação
@@ -96,12 +96,12 @@ docker compose --profile cli run --rm cli frequencia registro promover \
 ```bash
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao listar
 
-docker compose --profile cli run --rm cli frequencia publicacao publicar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao publicar \
   var/pacotes/risco-infrequencia-<versao> \
   <versao> \
-  --notas "o que mudou para a escola" \
-  --ator <pessoa> \
-  --papel aprovador
+  --notas "o que mudou para a escola"
 
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao verificar-hash <versao>
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao verificar-compatibilidade \
@@ -122,11 +122,11 @@ docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao ins
 ```bash
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao listar
 
-docker compose --profile cli run --rm cli frequencia publicacao reverter \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao reverter \
   <versao-anterior> \
-  --motivo "regressão observada no piloto" \
-  --ator <pessoa> \
-  --papel aprovador
+  --motivo "regressão observada no piloto"
 ```
 
 ## Auditoria e linhagem
@@ -158,10 +158,11 @@ A trilha mostra quem agiu, com qual papel, quando e sobre qual alvo. Ela não gu
 ```bash
 docker compose --profile cli run --rm -T --no-deps cli frequencia privacidade relatorio-risco <pasta>
 docker compose --profile cli run --rm -T --no-deps cli frequencia privacidade verificar-sensiveis <pasta>
-docker compose --profile cli run --rm cli frequencia privacidade bloquear \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> \
+  privacidade bloquear \
   <pasta> \
-  --motivo "suspeita de dado pessoal em texto livre" \
-  --ator <pessoa>
+  --motivo "suspeita de dado pessoal em texto livre"
 ```
 
 `privacidade bloquear` apenas registra auditoria. O bloqueio efetivo é `privacidade validar-entrada-treino`.

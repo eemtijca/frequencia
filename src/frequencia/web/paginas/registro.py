@@ -67,10 +67,9 @@ def renderizar() -> None:
                 versao,
                 "--estado",
                 alvo_estado,
-                "--papel",
-                "aprovador",
             ],
             rotulo=f"promover {versao} para {alvo_estado}",
+            papel=papel,
         )
         st.success(f"Tarefa {recibo['id']} disparada.")
 

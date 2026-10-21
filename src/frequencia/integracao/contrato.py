@@ -32,7 +32,7 @@ MENSAGENS_APROVADAS = {
     "risco_baixo": "Indicador tranquilo.",
     "sem_historico": "Sem histórico de chamadas para avaliar o risco.",
     "dados_insuficientes": "Histórico ainda curto: indicador em observação.",
-    "modelo_desatualizado": "Modelo desatualizado: valor o indicador até a atualização.",
+    "modelo_desatualizado": "Modelo desatualizado: use o indicador com cautela até a atualização.",
     "fallback": "Indicador pelo modo de segurança de regras.",
 }
 

@@ -59,3 +59,29 @@ def test_tarefas_disparam_cli_em_fundo(workspace, pacote_sintetico) -> None:
         time.sleep(0.5)
     assert desfecho is not None
     assert desfecho["estado"] == "concluida", desfecho
+
+
+def test_tarefa_com_papel_passa_opcoes_globais_antes_do_grupo(workspace, monkeypatch) -> None:
+    """Papel e ator vão antes do grupo, onde a CLI os aceita."""
+    import subprocess
+
+    from frequencia.web import tarefas as tarefas_mod
+
+    capturados: list[list[str]] = []
+
+    class _Processo:
+        pid = 1
+
+        def wait(self) -> int:
+            return 0
+
+    def _popen(comando, **_kwargs):
+        capturados.append(comando)
+        return _Processo()
+
+    monkeypatch.setattr(subprocess, "Popen", _popen)
+    tarefas_mod.disparar(["registro", "listar", "risco-infrequencia"], papel="aprovador", workspace=workspace)
+    comando = capturados[0]
+    assert comando.index("--papel") < comando.index("registro")
+    assert comando[comando.index("--papel") + 1] == "aprovador"
+    assert comando.index("--ator") < comando.index("registro")
