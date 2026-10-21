@@ -181,6 +181,13 @@ def registrar_modelo(
     with registro_travado() as registro:
         modelos = registro.setdefault("modelos", {})
         modelos.setdefault(identificador, {"versoes": {}, "atual": None})
+        existente = modelos[identificador]["versoes"].get(versao)
+        if existente is not None and existente.get("situacao") != "experimental":
+            # Reexecutar um ciclo com a mesma versão regravaria a entrada e
+            # devolveria uma versão homologada ou publicada a experimental,
+            # sem aprovações e com outro artefato.
+            msg = f"A versão {versao} já está no estado {existente['situacao']} e não pode ser regravada."
+            raise ErroEstado(msg, dica="Use outra --versao-modelo para o novo ciclo.")
         corpo = modelos[identificador]
         corpo["versoes"][versao] = {
             "situacao": situacao,
@@ -252,12 +259,25 @@ def requisitos_promocao(versao_modelo: dict[str, Any], novo_estado: str) -> dict
 
 
 def registrar_gates(identificador: str, versao: str, veredito: dict[str, Any]) -> None:
-    """Grava o veredito dos gates na versão registrada, para a promoção."""
+    """Grava o veredito dos gates na versão registrada, para a promoção.
+
+    Só versões experimentais recebem veredito novo: depois de promovida, a
+    versão guarda os gates com que foi promovida, e uma reexecução do ciclo
+    não os troca em silêncio.
+    """
     with registro_travado() as registro:
         corpo = registro.get("modelos", {}).get(identificador)
         if corpo is None or versao not in corpo["versoes"]:
             msg = f"Modelo {identificador}@{versao} não consta no registro."
             raise ValueError(msg)
+        situacao = corpo["versoes"][versao].get("situacao")
+        if situacao != "experimental":
+            registrar_auditoria(
+                "modelo.gates_preservados",
+                alvo=f"{identificador}@{versao}",
+                detalhe=f"versão em {situacao}: veredito novo não substitui o da promoção",
+            )
+            return
         corpo["versoes"][versao]["gates"] = {
             "aprovado": bool(veredito.get("aprovado")),
             "vereditos": veredito.get("vereditos", {}),

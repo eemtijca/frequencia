@@ -11,6 +11,7 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 ### Corrigido
 
 - Promoção verifica requisitos no motor: candidato exige gates aprovados gravados no registro; homologado e publicado exigem aprovação vigente, e uma rejeição posterior bloqueia. O checklist do painel passa a vir do motor (ADR-018).
+- Reexecutar o ciclo com a mesma `--versao-modelo` regravava a versão no registro, devolvendo uma versão homologada ou publicada a experimental, sem aprovações e com outro artefato; o registro passa a recusar a regravação de versão já promovida e preserva os gates com que ela foi promovida.
 - Publicação valida transição de estado, versão e hash do `modelo.js` contra o registro antes de gravar qualquer arquivo, monta a release em pasta temporária e só então a troca; uma publicação recusada não deixa mais release parcial no canal.
 - Rollback valida a versão alvo antes de retirar a atual do canal e passa a apontar a versão atual do registro para a restaurada.
 - Revogar ou descontinuar a versão publicada deixava o ponteiro de versão atual numa versão descontinuada, e o rollback seguinte falhava; retirar a versão atual agora limpa o ponteiro.

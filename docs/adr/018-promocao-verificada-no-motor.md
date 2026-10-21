@@ -15,6 +15,7 @@ A ADR-015 também assumia uma pessoa operando por vez, mas o painel dispara a CL
 - O experimento grava o veredito dos gates na versão registrada (`gates.aprovado`, `gates.vereditos`, `gates.avaliado_em`).
 - `infra/estado.py` expõe `requisitos_promocao`, a única fonte dos requisitos objetivos: candidato exige gates aprovados; homologado e publicado exigem também aprovação vigente, isto é, a decisão mais recente registrada sobre a versão precisa ser aprovação (uma rejeição posterior cancela aprovações anteriores).
 - Descontinuar e arquivar não têm requisito: retirar uma versão nunca fica bloqueado.
+- Uma versão fora do estado experimental não pode ser regravada por um novo ciclo, e o veredito de gates com que foi promovida fica preservado. Retirar a versão atual (descontinuar ou arquivar) limpa o ponteiro de versão atual.
 - A promoção recusa com `ErroEstado` listando as pendências; a recusa por papel usa `ErroPermissao`.
 - O painel exibe o checklist de `requisitos_promocao`, sem cálculo próprio.
 - Toda alteração do registro passa por `registro_travado`, que segura uma trava exclusiva de arquivo durante leitura, alteração e gravação.

@@ -205,3 +205,24 @@ def test_rollback_depois_de_revogacao(workspace: Path, tmp_path: Path) -> None:
     assert publicacao.versao_atual() is None
     publicacao.reverter("v1", ator="bia", motivo="volta à anterior")
     assert publicacao.versao_atual()["versao"] == "v1"
+
+
+def test_novo_ciclo_nao_regrava_versao_promovida(workspace: Path) -> None:
+    """Versão já promovida não volta a experimental nem troca de gates."""
+    _registrar("v1", "h")
+    estado_infra.registrar_gates(IDENTIFICADOR, "v1", {"aprovado": True, "vereditos": {"auc": True}})
+    estado_infra.promover_modelo(IDENTIFICADOR, "v1", "candidato", ator="ana", papel="cientista")
+    with pytest.raises(ErroEstado, match="candidato"):
+        _registrar("v1", "outro-hash")
+    estado_infra.registrar_gates(IDENTIFICADOR, "v1", {"aprovado": False, "vereditos": {"auc": False}})
+    versao = estado_infra.ler_registro()["modelos"][IDENTIFICADOR]["versoes"]["v1"]
+    assert versao["situacao"] == "candidato"
+    assert versao["hash_artefato"] == "h"
+    assert versao["gates"]["aprovado"] is True
+
+
+def test_versao_experimental_pode_ser_regravada(workspace: Path) -> None:
+    """Reexecutar o ciclo de uma versão ainda experimental continua possível."""
+    _registrar("v1", "h1")
+    _registrar("v1", "h2")
+    assert estado_infra.ler_registro()["modelos"][IDENTIFICADOR]["versoes"]["v1"]["hash_artefato"] == "h2"
