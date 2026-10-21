@@ -56,10 +56,9 @@ def renderizar() -> None:
                     "publicar",
                     str(pasta),
                     versao,
-                    "--papel",
-                    "aprovador",
                 ],
                 rotulo=f"publicar {versao}",
+                papel=papel,
             )
             st.success(f"Tarefa {recibo['id']} disparada.")
 
@@ -73,11 +72,13 @@ def renderizar() -> None:
         recibo = tarefas_mod.disparar(
             ["publicacao", "reverter", versao_anterior],
             rotulo=f"reverter para {versao_anterior}",
+            papel=papel,
         )
         st.success(f"Tarefa {recibo['id']} disparada.")
     if colunas2[1].button("Revogar", disabled=not confirmacao):
         recibo = tarefas_mod.disparar(
             ["publicacao", "revogar", versao_revogar],
             rotulo=f"revogar {versao_revogar}",
+            papel=papel,
         )
         st.success(f"Tarefa {recibo['id']} disparada.")

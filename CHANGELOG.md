@@ -10,6 +10,8 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 
 ### Corrigido
 
+- Comandos de governança da documentação passavam `--ator` e `--papel` depois do subcomando, posição que a CLI recusa; o painel fazia o mesmo ao disparar promoção e publicação, que falhavam sempre. As opções globais passam a vir antes do grupo, e um teste confere grupos, subcomandos e opções de todo comando citado em bloco bash.
+- Mensagem aprovada de modelo desatualizado corrigida para "use o indicador com cautela até a atualização".
 - Promoção verifica requisitos no motor: candidato exige gates aprovados gravados no registro; homologado e publicado exigem aprovação vigente, e uma rejeição posterior bloqueia. O checklist do painel passa a vir do motor (ADR-018).
 - Reexecutar o ciclo com a mesma `--versao-modelo` regravava a versão no registro, devolvendo uma versão homologada ou publicada a experimental, sem aprovações e com outro artefato; o registro passa a recusar a regravação de versão já promovida e preserva os gates com que ela foi promovida.
 - Publicação valida transição de estado, versão e hash do `modelo.js` contra o registro antes de gravar qualquer arquivo, monta a release em pasta temporária e só então a troca; uma publicação recusada não deixa mais release parcial no canal.

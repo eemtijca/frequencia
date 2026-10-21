@@ -41,7 +41,7 @@ def renderizar() -> None:
                 ]
                 if versao:
                     argumentos += ["--versao-modelo", versao]
-                recibo = tarefas_mod.disparar(argumentos, rotulo=f"ciclo {identificador}")
+                recibo = tarefas_mod.disparar(argumentos, rotulo=f"ciclo {identificador}", papel=papel)
                 st.success(f"Tarefa {recibo['id']} disparada.")
         else:
             st.info("Papel de observador não dispara treinos. Troque o papel na barra lateral.")

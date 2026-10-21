@@ -244,12 +244,12 @@ docker compose --profile cli run --rm cli frequencia avaliacao validar-gates \
   var/artefatos/experimentos/<id>
 
 # Publicação
-docker compose --profile cli run --rm cli frequencia publicacao publicar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao publicar \
   var/pacotes/risco-infrequencia-<versao-modelo> \
   <versao-modelo> \
-  --notas "<notas>" \
-  --ator <pessoa> \
-  --papel aprovador
+  --notas "<notas>"
 ```
 
 O método científico não substitui os gates. Ele responde "devemos?"; os gates respondem "podemos?".

@@ -52,32 +52,32 @@ Siga [publicacao-de-modelos.md](publicacao-de-modelos.md). Resumo:
 docker compose --profile cli run --rm -T --no-deps cli frequencia registro listar
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao listar
 
-docker compose --profile cli run --rm cli frequencia registro aprovar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro aprovar \
   risco-infrequencia <versao> \
-  --comentario "gates e documentação revisados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --comentario "gates e documentação revisados"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia <versao> \
   --estado candidato \
-  --justificativa "gates aprovados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "gates aprovados"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia <versao> \
   --estado homologado \
-  --justificativa "revisão concluída" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "revisão concluída"
 
-docker compose --profile cli run --rm cli frequencia publicacao publicar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao publicar \
   var/pacotes/risco-infrequencia-<versao> \
   <versao> \
-  --notas "<notas>" \
-  --ator <pessoa> \
-  --papel aprovador
+  --notas "<notas>"
 ```
 
 ## RB-04: investigar queda de qualidade
@@ -136,21 +136,21 @@ docker compose --profile cli run --rm -T --no-deps cli frequencia registro compa
 # Confirme a versão anterior no canal antes de reverter
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao listar
 
-docker compose --profile cli run --rm cli frequencia publicacao reverter \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao reverter \
   <versao-anterior> \
-  --motivo "regressão observada no piloto" \
-  --ator <pessoa> \
-  --papel aprovador
+  --motivo "regressão observada no piloto"
 ```
 
 Se não houver versão anterior, revogue e deixe o fallback ativo:
 
 ```bash
-docker compose --profile cli run --rm cli frequencia publicacao revogar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao revogar \
   <versao> \
-  --motivo "versão retirada por decisão da coordenação" \
-  --ator <pessoa> \
-  --papel aprovador
+  --motivo "versão retirada por decisão da coordenação"
 ```
 
 ## RB-08: suspeita de dado pessoal no fluxo
@@ -164,10 +164,11 @@ docker compose --profile cli run --rm cli frequencia publicacao revogar \
 docker compose --profile cli run --rm -T --no-deps cli frequencia privacidade relatorio-risco <pasta>
 docker compose --profile cli run --rm -T --no-deps cli frequencia privacidade verificar-sensiveis <pasta>
 docker compose --profile cli run --rm cli frequencia privacidade pseudonimizar <pasta> --colunas nome
-docker compose --profile cli run --rm cli frequencia privacidade bloquear \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> \
+  privacidade bloquear \
   <pasta> \
-  --motivo "suspeita de dado pessoal em texto livre" \
-  --ator <pessoa>
+  --motivo "suspeita de dado pessoal em texto livre"
 ```
 
 ## RB-09: experimento travado ou interrompido

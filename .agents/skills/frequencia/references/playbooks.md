@@ -184,11 +184,11 @@ docker compose --profile cli run --rm cli frequencia experimentos recuperar exp1
 Reexecução completa, apenas quando necessário:
 
 ```bash
-docker compose --profile cli run --rm cli frequencia experimentos executar \
+docker compose --profile cli run --rm cli frequencia \
+  --forca --justificativa "reconstrução após correção registrada na issue 123" \
+  experimentos executar \
   var/dados/processados/v1 \
-  --identificador exp1 \
-  --forca \
-  --justificativa "reconstrução após correção registrada na issue 123"
+  --identificador exp1
 ```
 
 Sucesso: sete etapas em `estado.json`, `gates.json` presente e pacote registrado como experimental.
@@ -270,32 +270,32 @@ Pré-condições: gates aprovados, pacote íntegro, paridade zero, compatibilida
 docker compose --profile cli run --rm -T --no-deps cli frequencia registro listar
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao listar
 
-docker compose --profile cli run --rm cli frequencia registro aprovar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro aprovar \
   risco-infrequencia 2026.10.20-exp1 \
-  --comentario "gates conferidos e documentação revisada" \
-  --ator <pessoa> \
-  --papel aprovador
+  --comentario "gates conferidos e documentação revisada"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia 2026.10.20-exp1 \
   --estado candidato \
-  --justificativa "gates aprovados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "gates aprovados"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia 2026.10.20-exp1 \
   --estado homologado \
-  --justificativa "revisão concluída" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "revisão concluída"
 
-docker compose --profile cli run --rm cli frequencia publicacao publicar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao publicar \
   var/pacotes/risco-infrequencia-2026.10.20-exp1 \
   2026.10.20-exp1 \
-  --notas "primeira versão homologada" \
-  --ator <pessoa> \
-  --papel aprovador
+  --notas "primeira versão homologada"
 
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao verificar-hash \
   2026.10.20-exp1
@@ -311,21 +311,21 @@ Rollback:
 # Confirme antes que a versão anterior existe no canal
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao listar
 
-docker compose --profile cli run --rm cli frequencia publicacao reverter \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao reverter \
   <versao-anterior> \
-  --motivo "regressão observada no piloto" \
-  --ator <pessoa> \
-  --papel aprovador
+  --motivo "regressão observada no piloto"
 ```
 
 Revogação:
 
 ```bash
-docker compose --profile cli run --rm cli frequencia publicacao revogar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao revogar \
   <versao> \
-  --motivo "versão retirada por decisão da coordenação" \
-  --ator <pessoa> \
-  --papel aprovador
+  --motivo "versão retirada por decisão da coordenação"
 ```
 
 Sucesso: versão publicada, hash conferido, compatibilidade confirmada, versão anterior disponível e auditoria registrada.

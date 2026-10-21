@@ -34,33 +34,33 @@ docker compose --profile cli run --rm cli frequencia experimentos executar \
   --versao-modelo <versao-modelo>
 
 # 2. Aprovação e promoção com papel de aprovador
-docker compose --profile cli run --rm cli frequencia registro aprovar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro aprovar \
   risco-infrequencia <versao> \
-  --comentario "gates e documentação revisados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --comentario "gates e documentação revisados"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia <versao> \
   --estado candidato \
-  --justificativa "gates aprovados" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "gates aprovados"
 
-docker compose --profile cli run --rm cli frequencia registro promover \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  registro promover \
   risco-infrequencia <versao> \
   --estado homologado \
-  --justificativa "revisão concluída" \
-  --ator <pessoa> \
-  --papel aprovador
+  --justificativa "revisão concluída"
 
 # 3. Publicação do pacote homologado
-docker compose --profile cli run --rm cli frequencia publicacao publicar \
+docker compose --profile cli run --rm cli frequencia \
+  --ator <pessoa> --papel aprovador \
+  publicacao publicar \
   var/pacotes/risco-infrequencia-<versao> \
   <versao> \
-  --notas "<notas>" \
-  --ator <pessoa> \
-  --papel aprovador
+  --notas "<notas>"
 
 # 4. Conferência pós-publicação
 docker compose --profile cli run --rm -T --no-deps cli frequencia publicacao verificar-hash <versao>
