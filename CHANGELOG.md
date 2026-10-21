@@ -21,6 +21,7 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 - Revogar ou descontinuar a versão publicada deixava o ponteiro de versão atual numa versão descontinuada, e o rollback seguinte falhava; retirar a versão atual agora limpa o ponteiro.
 - Registro de modelos serializa leitura, alteração e gravação sob trava de arquivo, sem perder escritas de tarefas paralelas do painel.
 - Recusa por papel ganha erro próprio (`ErroPermissao`) em vez de aparecer como falta de permissão de pasta, e a tradução de `ValueError` não duplica mais o ponto final.
+- Smoke e fixture do ciclo exigiam aprovação dos gates num perfil de cem alunos, em que o veredito oscila com o ruído. Passam a exigir os gates calculados, e a aprovação é exigida no perfil `padrao` (`make qualidade` e teste lento).
 
 ### Adicionado
 

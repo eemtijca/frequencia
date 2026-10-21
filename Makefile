@@ -1,5 +1,5 @@
 # Makefile do FrequencIA: Docker como caminho padrão, venv como fallback.
-.PHONY: help setup up down logs ps smoke smoke-image test lint tipo formato formato-check dicionario dicionario-check pacote ciclos demo etiquetas limpar limpar-tudo venv-setup venv-test venv-lint venv-tipo venv-formato venv-formato-check venv-dicionario venv-dicionario-check venv-pacote venv-ciclos venv-demo venv-smoke venv-limpar
+.PHONY: help setup up down logs ps smoke smoke-image qualidade test lint tipo formato formato-check dicionario dicionario-check pacote ciclos demo etiquetas limpar limpar-tudo venv-setup venv-test venv-lint venv-tipo venv-formato venv-formato-check venv-dicionario venv-dicionario-check venv-pacote venv-ciclos venv-demo venv-smoke venv-qualidade venv-limpar
 
 DOCKER_COMPOSE ?= docker compose
 
@@ -12,6 +12,7 @@ help:
 	@echo "  make ps                 Mostra o estado dos servicos"
 	@echo "  make smoke              Ciclo completo na arvore de trabalho"
 	@echo "  make smoke-image        Ciclo completo na imagem construida"
+	@echo "  make qualidade          Ciclo no perfil padrao exigindo todos os gates"
 	@echo "  make test               Suite pytest"
 	@echo "  make lint               ruff"
 	@echo "  make tipo               mypy"
@@ -32,6 +33,7 @@ help:
 	@echo "  make venv-tipo"
 	@echo "  make venv-formato-check"
 	@echo "  make venv-smoke"
+	@echo "  make venv-qualidade"
 	@echo "  make venv-demo"
 	@echo ""
 	@echo "Host:"
@@ -58,6 +60,9 @@ smoke:
 
 smoke-image:
 	$(DOCKER_COMPOSE) --profile ciclo up --build smoke
+
+qualidade:
+	$(DOCKER_COMPOSE) --profile cli run --rm -e FREQUENCIA_PERFIL=padrao -e FREQUENCIA_EXIGIR_GATES=1 cli bash scripts/smoke.sh
 
 test:
 	$(DOCKER_COMPOSE) --profile cli run --rm -T --no-deps cli python -m pytest tests -q
@@ -139,6 +144,9 @@ venv-demo:
 
 venv-smoke:
 	bash scripts/smoke.sh
+
+venv-qualidade:
+	FREQUENCIA_PERFIL=padrao FREQUENCIA_EXIGIR_GATES=1 bash scripts/smoke.sh
 
 venv-limpar:
 	rm -rf .venv var .pytest_cache .ruff_cache .mypy_cache dist build

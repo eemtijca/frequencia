@@ -33,6 +33,14 @@ bash scripts/smoke.sh
 python scripts/gerar_dicionario.py --check
 ```
 
+O perfil de fumaça do smoke valida a mecânica do ciclo: com cem alunos, a diferença entre o modelo e o baseline de regras fica dentro do erro-padrão da AUC, e o veredito dos gates oscila com o ruído. Por isso o smoke exige os gates calculados, não aprovados. A exigência de qualidade roda no perfil padrão, que leva vários minutos:
+
+```bash
+make qualidade
+make venv-qualidade
+FREQUENCIA_TESTES_LENTOS=1 python -m pytest tests/exportacao/test_qualidade.py -q
+```
+
 A suíte completa roda em cerca de 45 segundos numa máquina comum ou na CI. Em Docker Desktop com o repositório em OneDrive, o bind mount pode deixar a execução mais lenta. Os testes que exigem Node pulam com aviso quando ele está ausente; a imagem de desenvolvimento já inclui Node.
 
 O dicionário de features é gerado por `scripts/gerar_dicionario.py` e conferido no workflow de qualidade. O ciclo em Docker é validado pelo job `Compose e imagem` do workflow `testes.yml`.
