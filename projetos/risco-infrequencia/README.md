@@ -34,6 +34,16 @@ Coordenação e direção, no painel do dia e no relatório por aluno. O indicad
 
 Treino inicial com dados sintéticos determinísticos (perfil fumaça no smoke, padrão em produção), com sazonalidade, perfis de escola, transferências e eventos retroativos. Substituição por exportações institucionais autorizadas conforme o guia de exportação, sempre com base legal registrada e portão de privacidade verde.
 
+## Ciclo de execução
+
+```bash
+docker compose --profile cli run --rm cli frequencia experimentos executar \
+  var/dados/processados/<dataset> \
+  --identificador <id>
+```
+
+O método científico e os critérios de decisão estão em [docs/ciencia-e-inovacao.md](../../docs/ciencia-e-inovacao.md).
+
 ## Limitações conhecidas
 
 - Treinado com sintéticos até a primeira importação autorizada: validar com dados reais antes de produção.

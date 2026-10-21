@@ -11,6 +11,10 @@
 | [contrato-de-inferencia.md](contrato-de-inferencia.md) | Entrada, saída, fallback e casos de teste do pacote. |
 | [contrato-de-manifesto.md](contrato-de-manifesto.md) | Campos do manifest.json e validação aplicada. |
 | [mlops.md](mlops.md) | Como treinar, avaliar, calibrar e publicar. |
+| [ciencia-e-inovacao.md](ciencia-e-inovacao.md) | Método científico, funil de inovação e critérios de decisão. |
+| [guia-do-cientista.md](guia-do-cientista.md) | Guia humano do time de ML e ciência de dados. |
+| [guia-da-coordenacao.md](guia-da-coordenacao.md) | Guia humano de uso do indicador na escola. |
+| [templates/](templates/) | Brief, protocolo, nota de pesquisa, revisão, rubrica e pacote de evidências. |
 | [guia-de-dados-mec.md](guia-de-dados-mec.md) | Fontes do INEP, licenças, granularidade e limitações. |
 | [guia-de-exportacao.md](guia-de-exportacao.md) | Como preparar exportações autorizadas do app. |
 | [privacidade-lgpd.md](privacidade-lgpd.md) | Dados tratados, bases legais, portões e direitos. |
@@ -42,3 +46,4 @@
 | [014](adr/014-ponto-no-tempo-estrito.md) | Ponto-in-tempo estrito com purga temporal. |
 | [015](adr/015-estado-json-auditoria.md) | Registro JSON com auditoria JSONL. |
 | [016](adr/016-governanca-e-qualidade.md) | Governança do repositório, portões de qualidade e fluxo de release. |
+| [017](adr/017-diretrizes-de-ciencia-e-inovacao.md) | Diretrizes de ciência e inovação e modo pesquisa dos agentes. |
