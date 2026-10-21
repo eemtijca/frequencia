@@ -6,9 +6,16 @@ Para cada dia de referência D, as features vêm do snapshot as-of do fim de D
 estado final: positivo com pelo menos duas faltas na janela ou com
 desistência dentro dela. Sem a segunda condição, quem desiste no começo da
 janela teria as faltas truncadas e rótulo negativo justamente no desfecho
-mais grave (ADR-019). A separação treino/validação/teste é por tempo, com intervalo
-de purga do tamanho do horizonte entre blocos, para que nenhum rótulo
-atravesse a fronteira.
+mais grave (ADR-019).
+
+Uma fração de alunos, escolhida por hash do identificador, fica fora de todo
+o treino: suas linhas de histórico curto (abaixo do aquecimento) formam as
+divisões frio_calibracao e frio_teste, que medem a partida a frio, regime
+que o teste temporal no fim do período nunca exercita (ADR-022).
+
+A separação treino/validação/teste é por tempo, com intervalo de purga do
+tamanho do horizonte entre blocos, para que nenhum rótulo atravesse a
+fronteira.
 """
 
 from __future__ import annotations
@@ -42,6 +49,7 @@ class ConfigDataset:
     ponto_no_tempo: str = "estrito"  # estrito | atual
     perfil: str | None = None
     versao: str = ""
+    fracao_reserva_frio: float = 0.2
 
 
 def _dias_letivos_apos(dias: list[str], dia: str, quantidade: int) -> list[str]:
@@ -141,7 +149,10 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
         .then(pl.lit("teste"))
         .otherwise(pl.lit("purga"))
         .alias("divisao")
-    ).filter(pl.col("divisao") != "purga")
+    )
+    dataset = _reservar_partida_a_frio(dataset, config.fracao_reserva_frio).filter(
+        ~pl.col("divisao").is_in(["purga", "descartada"])
+    )
 
     pasta_destino = caminhos.caminho("processados") / _identificador(config)
     pasta_destino.mkdir(parents=True, exist_ok=True)
@@ -181,6 +192,7 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
             "passo": config.passo,
             "ponto_no_tempo": config.ponto_no_tempo,
             "perfil": config.perfil,
+            "fracao_reserva_frio": config.fracao_reserva_frio,
         },
         "resumo": resumo,
         "linhagem": {
@@ -202,6 +214,46 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
         detalhado=detalhado,
     )
     return {"pasta": pasta_destino, "meta": meta, "dataset": dataset}
+
+
+def _balde_aluno(aluno_id: str) -> float:
+    """Posição estável do aluno em [0, 1), independente de semente e ordem."""
+    import hashlib
+
+    return int(hashlib.sha256(aluno_id.encode("utf-8")).hexdigest()[:8], 16) / 16**8
+
+
+def _reservar_partida_a_frio(dataset: pl.DataFrame, fracao: float) -> pl.DataFrame:
+    """Separa alunos reservados para calibrar e testar a partida a frio.
+
+    Os alunos reservados saem do treino, da validação e do teste. Só as
+    linhas com histórico abaixo do aquecimento ficam, metade dos alunos em
+    frio_calibracao e metade em frio_teste; as demais são descartadas.
+    """
+    from frequencia.features.confianca import LIMIARES_CONFIANCA
+
+    if fracao <= 0 or dataset.height == 0:
+        return dataset
+    aquecimento = LIMIARES_CONFIANCA["aquecimento_dias"]
+    baldes = (
+        dataset.select("aluno_id")
+        .unique()
+        .with_columns(pl.col("aluno_id").map_elements(_balde_aluno, return_dtype=pl.Float64).alias("_balde"))
+    )
+    return (
+        dataset.join(baldes, on="aluno_id", how="left")
+        .with_columns(
+            pl.when(pl.col("_balde") >= fracao)
+            .then(pl.col("divisao"))
+            .when(pl.col("historico_dias") >= aquecimento)
+            .then(pl.lit("descartada"))
+            .when(pl.col("_balde") < fracao / 2)
+            .then(pl.lit("frio_calibracao"))
+            .otherwise(pl.lit("frio_teste"))
+            .alias("divisao")
+        )
+        .drop("_balde")
+    )
 
 
 def _dataset_vazio() -> pl.DataFrame:
@@ -227,6 +279,8 @@ def _identificador(config: ConfigDataset) -> str:
     )
     if config.perfil:
         corpo += f"-{config.perfil}"
+    if config.fracao_reserva_frio:
+        corpo += f"-f{round(config.fracao_reserva_frio * 100)}"
     return config.versao or corpo
 
 

@@ -51,3 +51,4 @@
 | [019](adr/019-desistencia-no-rotulo.md) | Desistência dentro da janela conta como desfecho positivo. |
 | [020](adr/020-calibracao-unica-fora-da-amostra.md) | Calibração única, fora da amostra, sobre o preditor publicado. |
 | [021](adr/021-conjuntos-conformes.md) | Conjuntos de predição conformes por classe no lugar do intervalo. |
+| [022](adr/022-partida-a-frio.md) | Alunos reservados para avaliar a partida a frio. |

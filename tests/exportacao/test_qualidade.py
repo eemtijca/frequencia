@@ -41,4 +41,4 @@ def test_perfil_padrao_aprova_todos_os_gates(workspace: Path, tmp_path: Path) ->
     )
     gates = resumo["gates"]
     assert gates["aprovado"], gates
-    assert not gates.get("nao_avaliados"), gates
+    assert not gates["nao_avaliados"], gates

@@ -19,6 +19,7 @@ GATES_PADRAO = {
     "melhora_sobre_baseline_minima": 0.0,
     "tamanho_pacote_maximo_bytes": 262144,
     "latencia_maxima_ms": 5.0,
+    "ece_maximo_partida_a_frio": 0.15,
 }
 
 K_TOP_PADRAO = 10
@@ -266,9 +267,21 @@ def validar_gates(
         )
     if latencia_ms is not None:
         vereditos["latencia"] = _no_maximo(latencia_ms, limiares["latencia_maxima_ms"])
+    # A partida a frio depende de alunos reservados em quantidade suficiente.
+    # Quando não há, o gate fica explicitamente não avaliado, nunca aprovado
+    # em silêncio, e a pendência aparece no veredito para a revisão humana.
+    nao_avaliados: dict[str, str] = {}
+    frio = relatorio.get("partida_a_frio") or {}
+    if frio.get("avaliado"):
+        vereditos["ece_partida_a_frio"] = _no_maximo(
+            (frio.get("calibracao") or {}).get("ece"), limiares["ece_maximo_partida_a_frio"]
+        )
+    else:
+        nao_avaliados["ece_partida_a_frio"] = frio.get("motivo", "relatório sem avaliação de partida a frio")
     return {
         "gates": limiares,
         "vereditos": vereditos,
+        "nao_avaliados": nao_avaliados,
         "aprovado": all(vereditos.values()),
     }
 
@@ -291,6 +304,7 @@ def gerar_relatorio_markdown(relatorio: dict, destino) -> str:
         "calibracao",
         "conformal",
         "fairness",
+        "partida_a_frio",
     ):
         corpo = relatorio.get(secao)
         if not corpo:

@@ -33,7 +33,7 @@ O modelo principal é LightGBM com parâmetros declarativos (config/experimento.
 
 ## Separação dos conjuntos
 
-Cada divisão do dataset tem um papel único (ADR-020): o treino alimenta o modelo de referência, o ensemble e o estudante; a validação calibra o estudante, que nunca a viu; o teste mede o preditor publicado e decide os gates. Nenhum parâmetro é ajustado no conjunto em que é avaliado.
+Cada divisão do dataset tem um papel único (ADR-020): o treino alimenta o modelo de referência, o ensemble e o estudante; a validação calibra o estudante, que nunca a viu; o teste mede o preditor publicado e decide os gates. Nenhum parâmetro é ajustado no conjunto em que é avaliado. Alunos reservados por hash (20% por padrão) ficam fora de tudo isso: suas linhas de histórico curto calibram (`frio_calibracao`) e testam (`frio_teste`) a partida a frio, regime que o teste do fim do período não contém (ADR-022).
 
 ## Ensemble
 

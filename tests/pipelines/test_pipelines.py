@@ -22,7 +22,17 @@ def test_dataset_separacao_temporal_estrita(dataset_construido) -> None:
     )
     teste = dados.filter(pl.col("divisao") == "teste")["dia"].min()
     divisoes = dados["divisao"].unique().to_list()
-    assert set(divisoes) == {"treino", "validacao", "teste"}, divisoes
+    assert (
+        {"treino", "validacao", "teste"}
+        <= set(divisoes)
+        <= {
+            "treino",
+            "validacao",
+            "teste",
+            "frio_calibracao",
+            "frio_teste",
+        }
+    ), divisoes
     if treino:
         assert treino <= fronteiras["treino_fim"]
         assert validacao[0] is not None and validacao[0] > treino
@@ -195,7 +205,9 @@ def test_desistencia_na_janela_vira_rotulo_positivo(workspace, pacote_sintetico)
     Inclui o caso extremo de desistir no primeiro dia da janela, quando o
     aluno não tem nenhuma linha no período e uma junção interna o perderia.
     """
-    config = dataset_mod.ConfigDataset(pasta_dados=pacote_sintetico, versao="desistencia", min_historico=5)
+    config = dataset_mod.ConfigDataset(
+        pasta_dados=pacote_sintetico, versao="desistencia", min_historico=5, fracao_reserva_frio=0.0
+    )
     dias = sorted(pl.read_csv(pacote_sintetico / "frequencias.csv")["dia"].unique().to_list())
     mantidos = set(dataset_mod.construir(config)["dataset"]["dia"].to_list())
     # Véspera mantida no dataset (fora das faixas de purga) com histórico.
@@ -253,3 +265,40 @@ def test_avaliacao_mede_ece_no_conjunto_avaliado() -> None:
     relatorio = avaliacao.avaliar(p, y, ajuste_calibracao={"ece_depois": 0.01})
     assert relatorio["calibracao"]["ece"] > 0.15
     assert relatorio["calibracao"]["ece_no_ajuste"] == 0.01
+
+
+def test_alunos_reservados_ficam_fora_do_treino(dataset_construido) -> None:
+    """Partida a frio: alunos reservados não aparecem em treino, validação ou teste.
+
+    Só as linhas com histórico abaixo do aquecimento entram, e cada aluno
+    reservado cai numa única divisão de partida a frio.
+    """
+    dados = dataset_mod.carregar_dataset(dataset_construido)["dataset"]
+    frio = dados.filter(pl.col("divisao").str.starts_with("frio_"))
+    assert frio.height > 0
+    assert frio["historico_dias"].max() < 30
+    reservados = set(frio["aluno_id"].to_list())
+    temporais = set(dados.filter(~pl.col("divisao").str.starts_with("frio_"))["aluno_id"].to_list())
+    assert not reservados & temporais
+    por_aluno = frio.group_by("aluno_id").agg(pl.col("divisao").n_unique().alias("divisoes"))
+    assert por_aluno["divisoes"].max() == 1
+
+
+def test_gate_de_partida_a_frio_nao_avaliado_fica_explicito() -> None:
+    """Sem dados de partida a frio, o gate aparece como não avaliado."""
+    from frequencia.pipelines import avaliacao
+
+    base = {
+        "metricas": {"auc": 0.8, "taxa_alerta": 0.1},
+        "calibracao": {"ece": 0.02},
+        "conformal": {"cobertura_minima_por_classe": 0.9},
+        "comparacao_baseline": {"ganho_absoluto": 0.01},
+    }
+    sem_frio = avaliacao.validar_gates(
+        {**base, "partida_a_frio": {"avaliado": False, "motivo": "poucas linhas"}}
+    )
+    assert sem_frio["nao_avaliados"] == {"ece_partida_a_frio": "poucas linhas"}
+    assert "ece_partida_a_frio" not in sem_frio["vereditos"]
+    ruim = avaliacao.validar_gates({**base, "partida_a_frio": {"avaliado": True, "calibracao": {"ece": 0.4}}})
+    assert ruim["vereditos"]["ece_partida_a_frio"] is False
+    assert not ruim["aprovado"]

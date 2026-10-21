@@ -25,6 +25,7 @@ def test_ciclo_completo_com_gates(experimento_completo: Path) -> None:
     gates = json.loads((experimento_completo / "gates.json").read_text(encoding="utf-8"))
     obrigatorios = {"auc", "ece", "cobertura_conformal", "taxa_alerta", "melhora_sobre_baseline"}
     assert obrigatorios <= set(gates["vereditos"])
+    assert set(gates["vereditos"]) | set(gates["nao_avaliados"]) >= {"ece_partida_a_frio"}
     estado = json.loads((experimento_completo / "estado.json").read_text(encoding="utf-8"))
     etapas = set(estado.get("etapas", {}).keys())
     assert {

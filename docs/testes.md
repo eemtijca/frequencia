@@ -10,10 +10,11 @@ Convenção e cobertura das suítes do FrequencIA. Toda execução cria e limpa 
 | Dados | tests/dados/ | Esquema das onze tabelas, determinismo da semente, sazonalidade por dia da semana, perfis de escola, eventos retroativos, isolamento da verdade oculta, calendário com feriados e recesso |
 | Privacidade | tests/privacidade/ | Detector com regex própria e presidio, portão que bloqueia PII, identificadores proibidos, pseudonimização estável, relatório de risco graduado, logs sem dado pessoal |
 | Features | tests/features/ | Catálogo válido, derivação das marcas conforme o documento soberano, célula vazia como ausência, marca S só com chamada por aula, ordem do contrato sem nulos, ordinal agrupando raras, estados de confiança, histerese, aquecimento, calendário cíclico, ponto-in-tempo |
-| Pipelines | tests/pipelines/ | Separação temporal estrita com purga, rótulo só com janela futura, verificação de futuro por reconstrução, treino com métricas, ensemble com pesos e OOF, calibração protegendo a identidade, conformal com cobertura, curva de aprendizado |
-| Exportação | tests/exportacao/ | Ciclo completo com gates, paridade Python e Node com divergência zero, tamanho e latência nos limites, manifesto válido, integridade do pacote, dados-teste automáticos, fallback com a mesma interface, ONNX válido, nenhum nome de pessoa nos artefatos, histerese no pacote |
+| Pipelines | tests/pipelines/ | Separação temporal estrita com purga, alunos reservados para partida a frio fora do treino, rótulo com desistência na janela, verificação de futuro por reconstrução, treino com métricas, ensemble com pesos, OOF e purga nas dobras, calibração protegendo a identidade e corrigindo com muita evidência, preditor publicado igual ao espelho do modelo.js, conjuntos conformes cobrindo cada classe, gates reprovando medida ausente, idempotência sensível à configuração, curva de aprendizado |
+| Exportação | tests/exportacao/ | Ciclo completo com veredito de todos os gates, paridade Python e Node com divergência zero, tamanho e latência nos limites, manifesto válido, integridade do pacote, dados-teste automáticos, fallback com a mesma interface, ONNX válido, nenhum nome de pessoa nos artefatos, histerese encadeada igual em JS e Python; com `FREQUENCIA_TESTES_LENTOS=1`, aprovação de todos os gates no perfil padrão |
 | Compose | workflow `testes.yml` | Build das imagens de runtime e desenvolvimento, saúde do MLflow e do painel, ciclo completo no container |
-| CLI | tests/cli/ | Ajuda de todos os grupos, erro amigável sem stack trace, JSON estruturado, modo seco sem gravar, força exigindo justificativa, fluxo completo por subprocesso |
+| Registro e publicação | tests/modelos/ | Publicação recusada sem gravar nada, hash do pacote contra o registro, rollback seguro, trava contra escrita concorrente, gates e aprovação exigidos na promoção |
+| CLI | tests/cli/ | Comandos citados na documentação conferidos contra a CLI, ajuda de todos os grupos, erro amigável sem stack trace, JSON estruturado, modo seco sem gravar, força exigindo justificativa, fluxo completo por subprocesso |
 | Web | tests/web/ | Importação das dezesseis páginas, renderização da visão geral com AppTest, tarefa de fundo executando a CLI e registrando desfecho |
 | Propriedades | tests/properties/ | Invariantes com Hypothesis: estado de confiança no vocabulário, pesos e misturas no intervalo unitário, histerese monotona, baseline determinístico e limitado, regras crescem com falta recente |
 
@@ -41,7 +42,7 @@ make venv-qualidade
 FREQUENCIA_TESTES_LENTOS=1 python -m pytest tests/exportacao/test_qualidade.py -q
 ```
 
-A suíte completa roda em cerca de 45 segundos numa máquina comum ou na CI. Em Docker Desktop com o repositório em OneDrive, o bind mount pode deixar a execução mais lenta. Os testes que exigem Node pulam com aviso quando ele está ausente; a imagem de desenvolvimento já inclui Node.
+A suíte completa leva alguns minutos: a medição de referência, num contêiner de desenvolvimento em outubro de 2026, foi de cerca de 12 minutos. Em Docker Desktop com o repositório em OneDrive, o bind mount pode deixar a execução mais lenta. Os testes que exigem Node pulam com aviso quando ele está ausente; a imagem de desenvolvimento já inclui Node.
 
 O dicionário de features é gerado por `scripts/gerar_dicionario.py` e conferido no workflow de qualidade. O ciclo em Docker é validado pelo job `Compose e imagem` do workflow `testes.yml`.
 

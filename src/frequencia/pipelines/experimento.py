@@ -46,7 +46,9 @@ from frequencia.pipelines import (
 from frequencia.pipelines.treino import ConfigTreino
 
 # Divisões do dataset usadas para calibrar o estudante: nunca vistas por ele.
-DIVISOES_CALIBRACAO = ("validacao",)
+DIVISOES_CALIBRACAO = ("validacao", "frio_calibracao")
+# Linhas mínimas, com as duas classes, para avaliar a partida a frio.
+LINHAS_MINIMAS_FRIO = 300
 
 ETAPAS = ("treino", "ensemble", "destilacao", "calibracao", "avaliacao", "exportacao", "empacotamento")
 
@@ -351,6 +353,7 @@ def _executar_avaliacao(
         conformal=conformal,
     )
     relatorio["curva_aprendizado"] = ajuste_dict.get("curva_aprendizado", [])
+    relatorio["partida_a_frio"] = _avaliar_partida_a_frio(dados, estudante, ajuste)
     corpo = {"resumo": relatorio, "relatorio": relatorio}
     with (pasta / "avaliacao.json").open("w", encoding="utf-8") as saida:
         json.dump(relatorio, saida, ensure_ascii=False, indent=2, sort_keys=True)
@@ -363,6 +366,49 @@ def _executar_avaliacao(
         detalhado=detalhado,
     )
     return corpo
+
+
+def _avaliar_partida_a_frio(dados: pl.DataFrame, estudante, ajuste: dict) -> dict:
+    """Avalia os alunos reservados nos primeiros dias de histórico.
+
+    Mede o aquecimento e os grupos de histórico curto, que o teste temporal
+    no fim do período não contém. Com poucas linhas ou uma só classe, o
+    relatório diz que não avaliou e por quê, em vez de inventar números.
+    """
+    from frequencia.features.catalogo import NOMES_FEATURES
+
+    frio = _conjunto(dados, ("frio_teste",))
+    if frio.height < LINHAS_MINIMAS_FRIO or frio["rotulo"].n_unique() < 2:
+        return {
+            "avaliado": False,
+            "linhas": int(frio.height),
+            "motivo": f"menos de {LINHAS_MINIMAS_FRIO} linhas com as duas classes nos alunos reservados",
+        }
+    historico = frio["historico_dias"].to_numpy().astype(float)
+    bruto = estudante.predict_proba(frio.select(NOMES_FEATURES).to_numpy())[:, 1]
+    publicadas = calibracao_mod.prever_publicado(
+        bruto, ajuste["a_platt"], ajuste["b_platt"], ajuste["taxa_base"], historico
+    )
+    rotulos = frio["rotulo"].cast(pl.Int32).to_numpy()
+    chaves = [
+        calibracao_mod.chave_grupo(serie, int(dias))
+        for serie, dias in zip(frio["serie_id"].to_list(), historico, strict=True)
+    ]
+    relatorio = avaliacao_mod.avaliar(
+        publicadas,
+        rotulos,
+        historico=historico,
+        conformal=calibracao_mod.avaliar_conjuntos(publicadas, rotulos, chaves, ajuste["limiares_conformal"]),
+    )
+    return {
+        "avaliado": True,
+        "linhas": int(frio.height),
+        "alunos": int(frio["aluno_id"].n_unique()),
+        "metricas": relatorio["metricas"],
+        "calibracao": relatorio["calibracao"],
+        "conformal": relatorio["conformal"],
+        "por_faixa_historico": relatorio.get("por_faixa_historico", []),
+    }
 
 
 def _executar_exportacao(
