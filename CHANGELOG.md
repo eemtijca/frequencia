@@ -11,6 +11,7 @@ Enquanto a primeira versão pública não é lançada, a versão do projeto perm
 ### Corrigido
 
 - Nenhuma linha de teste tinha histórico abaixo de 30 dias, então aquecimento, grupos de histórico curto e estados iniciais de confiança nunca eram avaliados. Alunos reservados por hash formam as divisões `frio_calibracao` e `frio_teste`, com relatório próprio e gate de ECE quando há volume; sem volume, o gate aparece como não avaliado (ADR-022).
+- Alunos reservados que se matriculam tarde têm histórico curto em qualquer época; as linhas deles em `frio_calibracao` passam a ser limitadas a datas até o fim da validação, e o painel de experimentos mostra os gates não avaliados com o motivo.
 - Gates de ECE e de cobertura liam valores medidos nos dados em que a calibração foi ajustada, e medidas ausentes passavam (`or 0.0` no ECE, `or 1.0` na cobertura, ganho sobre o baseline ausente como zero). O ECE passa a ser medido no teste sobre o preditor publicado, e todo gate com medida ausente reprova.
 - Intervalo conforme publicado era um intervalo de predição para um rótulo binário apresentado como incerteza da probabilidade, com largura média de 0,88 no teste e cobertura declarada sem medição em grupos pequenos. A saída passa a ser `conjunto_conformal` (`[1]`, `[0]` ou `[0, 1]`), com garantia por classe dentro de cada grupo Mondrian e cobertura medida no teste. O contrato de inferência sobe para a versão 2 (ADR-021).
 - Manifesto gravava os limiares de alerta e a confiança padrão em vez dos embutidos no `modelo.js` do mesmo pacote.

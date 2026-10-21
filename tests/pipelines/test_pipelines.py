@@ -282,6 +282,10 @@ def test_alunos_reservados_ficam_fora_do_treino(dataset_construido) -> None:
     assert not reservados & temporais
     por_aluno = frio.group_by("aluno_id").agg(pl.col("divisao").n_unique().alias("divisoes"))
     assert por_aluno["divisoes"].max() == 1
+    # A calibração da partida a frio nunca usa datas do período de teste.
+    inicio_teste = dados.filter(pl.col("divisao") == "teste")["dia"].min()
+    calibracao_frio = dados.filter(pl.col("divisao") == "frio_calibracao")
+    assert calibracao_frio.height == 0 or calibracao_frio["dia"].max() < inicio_teste
 
 
 def test_gate_de_partida_a_frio_nao_avaliado_fica_explicito() -> None:

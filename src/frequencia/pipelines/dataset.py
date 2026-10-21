@@ -150,9 +150,9 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
         .otherwise(pl.lit("purga"))
         .alias("divisao")
     )
-    dataset = _reservar_partida_a_frio(dataset, config.fracao_reserva_frio).filter(
-        ~pl.col("divisao").is_in(["purga", "descartada"])
-    )
+    dataset = _reservar_partida_a_frio(
+        dataset, config.fracao_reserva_frio, fim_calibracao=fronteiras["validacao_fim"]
+    ).filter(~pl.col("divisao").is_in(["purga", "descartada"]))
 
     pasta_destino = caminhos.caminho("processados") / _identificador(config)
     pasta_destino.mkdir(parents=True, exist_ok=True)
@@ -223,12 +223,17 @@ def _balde_aluno(aluno_id: str) -> float:
     return int(hashlib.sha256(aluno_id.encode("utf-8")).hexdigest()[:8], 16) / 16**8
 
 
-def _reservar_partida_a_frio(dataset: pl.DataFrame, fracao: float) -> pl.DataFrame:
+def _reservar_partida_a_frio(
+    dataset: pl.DataFrame, fracao: float, *, fim_calibracao: str | None = None
+) -> pl.DataFrame:
     """Separa alunos reservados para calibrar e testar a partida a frio.
 
     Os alunos reservados saem do treino, da validação e do teste. Só as
     linhas com histórico abaixo do aquecimento ficam, metade dos alunos em
     frio_calibracao e metade em frio_teste; as demais são descartadas.
+    Alunos matriculados tarde têm histórico curto em qualquer época, então
+    frio_calibracao só aceita dias até fim_calibracao: a calibração nunca
+    vê datas do período de teste.
     """
     from frequencia.features.confianca import LIMIARES_CONFIANCA
 
@@ -246,6 +251,8 @@ def _reservar_partida_a_frio(dataset: pl.DataFrame, fracao: float) -> pl.DataFra
             pl.when(pl.col("_balde") >= fracao)
             .then(pl.col("divisao"))
             .when(pl.col("historico_dias") >= aquecimento)
+            .then(pl.lit("descartada"))
+            .when((pl.col("_balde") < fracao / 2) & (pl.col("dia") > (fim_calibracao or "9999-12-31")))
             .then(pl.lit("descartada"))
             .when(pl.col("_balde") < fracao / 2)
             .then(pl.lit("frio_calibracao"))
