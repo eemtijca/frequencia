@@ -69,7 +69,7 @@ sequenceDiagram
   CLI-->>O: resumo com métricas e gates
 ```
 
-Cada etapa é idempotente: o estado em `var/artefatos/experimentos/<id>/estado.json` registra a conclusão e execuções seguintes pulam o que já foi feito, salvo `--forca` com justificativa auditada.
+Cada etapa é idempotente: o estado em `var/artefatos/experimentos/<id>/estado.json` registra a conclusão e execuções seguintes pulam o que já foi feito, salvo `--forca` com justificativa auditada. O reaproveitamento vale só para a mesma configuração e o mesmo conteúdo de dataset: o estado guarda uma chave dos dois, e qualquer diferença invalida todas as etapas, com registro na auditoria. Quando uma etapa precisa rodar de novo, todas as seguintes também rodam, porque dependem dos artefatos dela.
 
 ## Diário ponto-in-tempo
 
