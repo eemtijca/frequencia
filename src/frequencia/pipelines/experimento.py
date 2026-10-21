@@ -174,6 +174,8 @@ def executar(
     with (pasta / "gates.json").open("w", encoding="utf-8") as saida:
         json.dump(veredito, saida, ensure_ascii=False, indent=2, sort_keys=True)
         saida.write("\n")
+    # A promoção a candidato lê o veredito do registro (ADR-018).
+    estado_infra.registrar_gates("risco-infrequencia", resultado_pacote["resumo"]["versao_modelo"], veredito)
 
     logs.registrar(
         "experimentos.ciclo",

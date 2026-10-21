@@ -68,7 +68,9 @@ def _registrar(versao: str, hash_modelo: str) -> None:
 
 
 def _homologar(versao: str) -> None:
+    estado_infra.registrar_gates(IDENTIFICADOR, versao, {"aprovado": True, "vereditos": {}})
     estado_infra.promover_modelo(IDENTIFICADOR, versao, "candidato", ator="ana", papel="cientista")
+    estado_infra.aprovar_modelo(IDENTIFICADOR, versao, True, ator="bia", comentario="revisado")
     estado_infra.promover_modelo(IDENTIFICADOR, versao, "homologado", ator="bia", papel="aprovador")
 
 
@@ -149,6 +151,7 @@ def test_registro_nao_perde_escritas_concorrentes(workspace: Path) -> None:
 def test_recusa_de_papel_nao_vira_erro_de_arquivo(workspace: Path) -> None:
     """A recusa por papel diz o motivo real, não falta de acesso a pasta."""
     _registrar("v1", "h")
+    estado_infra.registrar_gates(IDENTIFICADOR, "v1", {"aprovado": True, "vereditos": {}})
     estado_infra.promover_modelo(IDENTIFICADOR, "v1", "candidato", ator="ana", papel="cientista")
     with pytest.raises(ErroPermissao) as excecao:
         estado_infra.promover_modelo(IDENTIFICADOR, "v1", "homologado", ator="ana", papel="cientista")
@@ -158,3 +161,34 @@ def test_recusa_de_papel_nao_vira_erro_de_arquivo(workspace: Path) -> None:
 def test_mensagem_de_valor_invalido_sem_ponto_duplo() -> None:
     """A tradução não acrescenta ponto a mensagem que já termina em ponto."""
     assert not traduzir_erro(ValueError("Transição não permitida.")).endswith("..")
+
+
+def test_candidato_exige_gates_aprovados(workspace: Path) -> None:
+    """Sem gates aprovados registrados, a versão não vira candidata."""
+    _registrar("v1", "h")
+    with pytest.raises(ErroEstado, match="gates"):
+        estado_infra.promover_modelo(IDENTIFICADOR, "v1", "candidato", ator="ana", papel="cientista")
+    estado_infra.registrar_gates(IDENTIFICADOR, "v1", {"aprovado": False, "vereditos": {"auc": False}})
+    with pytest.raises(ErroEstado, match="gates"):
+        estado_infra.promover_modelo(IDENTIFICADOR, "v1", "candidato", ator="ana", papel="cientista")
+
+
+def test_homologado_exige_aprovacao_vigente(workspace: Path) -> None:
+    """Sem aprovação, ou com rejeição posterior, a homologação é bloqueada."""
+    _registrar("v1", "h")
+    estado_infra.registrar_gates(IDENTIFICADOR, "v1", {"aprovado": True, "vereditos": {}})
+    estado_infra.promover_modelo(IDENTIFICADOR, "v1", "candidato", ator="ana", papel="cientista")
+    with pytest.raises(ErroEstado, match="aprovação"):
+        estado_infra.promover_modelo(IDENTIFICADOR, "v1", "homologado", ator="bia", papel="aprovador")
+    estado_infra.aprovar_modelo(IDENTIFICADOR, "v1", True, ator="bia")
+    estado_infra.aprovar_modelo(IDENTIFICADOR, "v1", False, ator="caio", comentario="calibração ruim")
+    with pytest.raises(ErroEstado, match="aprovação"):
+        estado_infra.promover_modelo(IDENTIFICADOR, "v1", "homologado", ator="bia", papel="aprovador")
+    estado_infra.aprovar_modelo(IDENTIFICADOR, "v1", True, ator="caio", comentario="recalibrado")
+    estado_infra.promover_modelo(IDENTIFICADOR, "v1", "homologado", ator="bia", papel="aprovador")
+
+
+def test_retirar_versao_nunca_fica_bloqueado(workspace: Path) -> None:
+    """Descontinuar não depende de gates nem de aprovação."""
+    _registrar("v1", "h")
+    estado_infra.promover_modelo(IDENTIFICADOR, "v1", "descontinuado", ator="ana", papel="engenheiro")

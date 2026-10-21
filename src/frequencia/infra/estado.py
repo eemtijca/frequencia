@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from frequencia.infra import caminhos
-from frequencia.infra.erros import ErroPermissao
+from frequencia.infra.erros import ErroEstado, ErroPermissao
 
 ESTADOS_MODELO = (
     "experimental",
@@ -218,7 +218,56 @@ def _checar_promocao(
     if novo_estado in ("homologado", "publicado") and papel != "aprovador":
         msg = "A promoção exige o papel de aprovador."
         raise ErroPermissao(msg)
+    pendencias = [item for item, ok in requisitos_promocao(versao_modelo, novo_estado).items() if not ok]
+    if pendencias:
+        msg = f"Promoção para {novo_estado} bloqueada: {'; '.join(pendencias)}."
+        raise ErroEstado(msg, dica="Resolva as pendências e tente de novo.")
     return versao_modelo
+
+
+def aprovacao_vigente(versao_modelo: dict[str, Any]) -> bool:
+    """Verdadeiro quando a decisão mais recente sobre a versão é aprovação.
+
+    Uma rejeição posterior cancela aprovações anteriores: vale a última palavra.
+    """
+    aprovacoes = versao_modelo.get("aprovacoes", [])
+    return bool(aprovacoes) and bool(aprovacoes[-1].get("aprovado"))
+
+
+def requisitos_promocao(versao_modelo: dict[str, Any], novo_estado: str) -> dict[str, bool]:
+    """Requisitos objetivos de cada destino, avaliados pelo motor.
+
+    Candidato exige gates aprovados no experimento que gerou a versão;
+    homologado e publicado exigem, além disso, aprovação registrada vigente.
+    Descontinuar e arquivar não têm requisito: retirar uma versão nunca fica
+    bloqueado.
+    """
+    requisitos: dict[str, bool] = {}
+    if novo_estado in ("candidato", "homologado", "publicado"):
+        gates = versao_modelo.get("gates") or {}
+        requisitos["gates do experimento aprovados"] = gates.get("aprovado") is True
+    if novo_estado in ("homologado", "publicado"):
+        requisitos["aprovação registrada e não revogada por rejeição"] = aprovacao_vigente(versao_modelo)
+    return requisitos
+
+
+def registrar_gates(identificador: str, versao: str, veredito: dict[str, Any]) -> None:
+    """Grava o veredito dos gates na versão registrada, para a promoção."""
+    with registro_travado() as registro:
+        corpo = registro.get("modelos", {}).get(identificador)
+        if corpo is None or versao not in corpo["versoes"]:
+            msg = f"Modelo {identificador}@{versao} não consta no registro."
+            raise ValueError(msg)
+        corpo["versoes"][versao]["gates"] = {
+            "aprovado": bool(veredito.get("aprovado")),
+            "vereditos": veredito.get("vereditos", {}),
+            "avaliado_em": _agora_iso(),
+        }
+    registrar_auditoria(
+        "modelo.gates",
+        alvo=f"{identificador}@{versao}",
+        aprovado=bool(veredito.get("aprovado")),
+    )
 
 
 def validar_promocao(
