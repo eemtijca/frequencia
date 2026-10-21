@@ -4,15 +4,18 @@ Do experimento aprovado ao pacote ativo no FrequenciApp, com critérios objetivo
 
 ## Gates de promoção
 
-Uma versão só anda para frente com todos os gates aprovados. Os limites vivem em `pipelines/avaliacao.py` e a mudança deles exige ADR.
+Uma versão só anda para frente com todos os gates aprovados. Os limites vivem em `pipelines/avaliacao.py` e a mudança deles exige ADR. Todas as medidas vêm do conjunto de teste, sobre o preditor publicado (estudante, Platt e aquecimento), e um gate cuja medida está ausente reprova.
 
 | Gate | Limite padrão | Mede |
 | --- | --- | --- |
 | auc | AUC mínima 0,70 no teste | Capacidade de ordenação |
-| ece | ECE máximo 0,10 | Calibração da probabilidade |
-| cobertura_conformal | Cobertura mínima 0,80 | Confiança dos intervalos |
+| ece | ECE máximo 0,10 no teste | Calibração da probabilidade publicada |
+| cobertura_conformal | Cobertura mínima 0,80 | Menor cobertura por classe dos conjuntos conformes, medida no teste |
 | taxa_alerta | Máxima 0,35 | Custo operacional da coordenação |
 | melhora_sobre_baseline | Mínima 0 | Ganho sobre as regras simples |
+| lift_alerta | Mínimo 2,0 | Precisão do alerta dividida pela prevalência: o aluno sinalizado tem ao menos o dobro da chance média |
+| revocacao_alerta | Mínima 0,15 | Fração dos desfechos que o alerta alcança |
+| ece_partida_a_frio | ECE máximo 0,15 nos alunos reservados | Calibração no início do histórico; sem volume, fica em `nao_avaliados` |
 | tamanho_pacote | Máximo 256 KiB | Leveza para celular modesto |
 | latencia | Máxima 5 ms | Resposta no navegador |
 

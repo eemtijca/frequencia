@@ -36,8 +36,11 @@ def ciclo_simulado(workspace: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(experimento, "_executar_exportacao", etapa("exportacao", resumo))
     monkeypatch.setattr(experimento, "_executar_empacotamento", etapa("empacotamento", resumo))
     monkeypatch.setattr(experimento.dataset_mod, "carregar_dataset", lambda _p: {"dataset": None, "meta": {}})
-    monkeypatch.setattr(experimento.avaliacao_mod, "validar_gates", lambda *_a, **_k: {"aprovado": True})
+    monkeypatch.setattr(
+        experimento.avaliacao_mod, "validar_gates", lambda *_a, **_k: {"aprovado": True, "vereditos": {}}
+    )
     monkeypatch.setattr(experimento.estado_infra, "registrar_gates", lambda *_a, **_k: None)
+    monkeypatch.setattr(experimento, "_registrar_mlflow_publicado", lambda *_a, **_k: "sem-rastreamento")
     return pasta_dataset, chamadas
 
 

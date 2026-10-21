@@ -45,6 +45,13 @@ jobs:
       - name: Executar o ciclo completo
         run: bash scripts/smoke.sh
 
+      # O perfil de fumaça valida a mecânica; a aprovação dos gates é exigida
+      # no perfil padrão, que tem volume para o veredito significar algo.
+      - name: Exigir todos os gates no perfil padrão
+        env:
+          FREQUENCIA_TESTES_LENTOS: "1"
+        run: python -m pytest tests/exportacao/test_qualidade.py -q
+
       - name: Publicar relatórios em caso de falha
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

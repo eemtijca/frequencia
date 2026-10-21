@@ -37,22 +37,31 @@ def renderizar() -> None:
         "ancora na taxa base e ganha peso do modelo conforme o histórico cresce."
     )
 
-    st.subheader("Intervalos conformes por grupo")
-    quantis = calibracao.get("quantis_conformal", {})
-    cobertura = calibracao.get("cobertura_por_grupo", {})
-    if quantis:
+    st.subheader("Conjuntos conformes por grupo")
+    limiares = calibracao.get("limiares_conformal", {})
+    contagens = calibracao.get("linhas_por_grupo", {})
+    cobertura = ((detalhe.get("avaliacao") or {}).get("conformal") or {}).get("cobertura_por_grupo", {})
+    if limiares:
         import pandas as pd
 
         linhas = [
             {
                 "grupo": grupo,
-                "largura do intervalo": valor,
-                "cobertura observada": cobertura.get(grupo, ""),
+                "inclui 0 se p até": valor["negativo"],
+                "inclui 1 se p a partir de": valor["positivo"],
+                "linhas de calibração (0 / 1)": f"{contagens.get(grupo, {}).get('0', 0)} / "
+                f"{contagens.get(grupo, {}).get('1', 0)}",
+                "cobertura no teste (0 / 1)": f"{cobertura.get(grupo, {}).get('0', 'n/d')} / "
+                f"{cobertura.get(grupo, {}).get('1', 'n/d')}",
             }
-            for grupo, valor in quantis.items()
+            for grupo, valor in limiares.items()
         ]
         st.dataframe(pd.DataFrame(linhas), use_container_width=True, hide_index=True)
-        st.caption("Grupos Mondrian por série e faixa de histórico (curto, medio, longo).")
+        st.caption(
+            "Grupos Mondrian por série e faixa de histórico (curto, medio, longo), com limiar por classe. "
+            "O conjunto {1} indica risco no nível de confiança, {0} ausência de risco e {0, 1} indecisão. "
+            "A cobertura é medida no teste; n/d indica classe com poucas linhas no grupo."
+        )
 
     st.subheader("Curva de aprendizado")
     curva = calibracao.get("curva_aprendizado", [])

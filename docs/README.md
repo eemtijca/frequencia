@@ -48,3 +48,8 @@
 | [016](adr/016-governanca-e-qualidade.md) | Governança do repositório, portões de qualidade e fluxo de release. |
 | [017](adr/017-diretrizes-de-ciencia-e-inovacao.md) | Diretrizes de ciência e inovação e modo pesquisa dos agentes. |
 | [018](adr/018-promocao-verificada-no-motor.md) | Requisitos de promoção verificados no motor e trava do registro. |
+| [019](adr/019-desistencia-no-rotulo.md) | Desistência dentro da janela conta como desfecho positivo. |
+| [020](adr/020-calibracao-unica-fora-da-amostra.md) | Calibração única, fora da amostra, sobre o preditor publicado. |
+| [021](adr/021-conjuntos-conformes.md) | Conjuntos de predição conformes por classe no lugar do intervalo. |
+| [022](adr/022-partida-a-frio.md) | Alunos reservados para avaliar a partida a frio. |
+| [023](adr/023-limiar-de-alerta-por-taxa-alvo.md) | Limiar de alerta derivado da taxa-alvo. |

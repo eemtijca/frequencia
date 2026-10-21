@@ -37,13 +37,21 @@ $FREQUENCIA --json experimentos executar "$PASTA_DATASET" --identificador smoke 
 
 echo "5/8 conferindo gates de promoção"
 $FREQUENCIA --json avaliacao validar-gates "$WORKSPACE/var/artefatos/experimentos/smoke" > "$WORKSPACE/var/relatorios/gates-smoke.json"
-python - <<'PY'
+# O perfil de fumaça valida a mecânica: os gates precisam ser calculados, mas
+# a aprovação só é exigida com FREQUENCIA_EXIGIR_GATES=1, pensado para o
+# perfil padrão, que tem volume para o veredito significar algo.
+FREQUENCIA_EXIGIR_GATES="${FREQUENCIA_EXIGIR_GATES:-0}" python - <<'PY'
 import json
 import os
 workspace = os.environ.get("FREQUENCIA_WORKSPACE", os.getcwd())
 corpo = json.load(open(f"{workspace}/var/relatorios/gates-smoke.json", encoding="utf-8"))
-assert corpo["aprovado"], corpo
-print("gates aprovados: " + ", ".join(corpo["vereditos"]))
+assert all(isinstance(valor, bool) for valor in corpo["vereditos"].values()), corpo
+reprovados = [nome for nome, ok in corpo["vereditos"].items() if not ok]
+print("gates calculados: " + ", ".join(corpo["vereditos"]))
+print("reprovados: " + (", ".join(reprovados) or "nenhum"))
+print("não avaliados: " + (", ".join(corpo.get("nao_avaliados", {})) or "nenhum"))
+if os.environ["FREQUENCIA_EXIGIR_GATES"] == "1":
+    assert corpo["aprovado"] and not corpo.get("nao_avaliados"), corpo
 PY
 
 echo "6/8 verificando ausência de futuro no dataset"

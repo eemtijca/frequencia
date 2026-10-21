@@ -80,10 +80,13 @@ def renderizar() -> None:
         vereditos = detalhe["gates"]["vereditos"]
         aprovado = detalhe["gates"]["aprovado"]
         if aprovado:
-            st.success("Todos os gates de promoção aprovados.")
+            st.success("Todos os gates de promoção avaliados foram aprovados.")
         else:
             falhas = [nome for nome, ok in vereditos.items() if not ok]
             st.warning(f"Gates reprovados: {', '.join(falhas)}.")
+        nao_avaliados = detalhe["gates"].get("nao_avaliados") or {}
+        for nome, motivo in nao_avaliados.items():
+            st.info(f"Gate não avaliado: {nome} ({motivo}).")
     if detalhe["estado"]:
         etapas = detalhe["estado"].get("etapas", {})
         st.caption("Etapas concluídas: " + ", ".join(etapas.keys()))

@@ -50,6 +50,7 @@ def criar(
             "min_app_versao": parametros.get("min_app_versao", "1.4.0"),
             "tentativas_optuna": parametros.get("tentativas_optuna", 0),
             "dobras_ensemble": parametros.get("dobras_ensemble", 3),
+            "taxa_alerta_alvo": parametros.get("taxa_alerta_alvo", 0.10),
         }
         with (destino / "config.json").open("w", encoding="utf-8") as saida:
             json.dump(corpo, saida, ensure_ascii=False, indent=2, sort_keys=True)
@@ -68,8 +69,11 @@ def executar(
     dobras: int = typer.Option(3, help="Dobras temporais do ensemble."),
     versao_modelo: str = typer.Option("", help="Versão explícita do modelo gerado."),
     min_app: str = typer.Option("1.4.0", help="Versão mínima do FrequenciApp."),
+    taxa_alerta_alvo: float = typer.Option(
+        0.10, help="Fração-alvo de alunos acima do limiar de entrada do alerta (capacidade da escola)."
+    ),
 ) -> None:
-    """Executa o ciclo completo: treino, ensemble, calibração, destilação,
+    """Executa o ciclo completo: treino, ensemble, destilação, calibração,
     avaliação, exportação e empacotamento, com idempotência por etapa."""
     contexto = _ctx(ctx)
     try:
@@ -91,6 +95,7 @@ def executar(
             dobras_ensemble=dobras,
             versao_modelo=versao_modelo,
             min_app_versao=min_app,
+            taxa_alerta_alvo=taxa_alerta_alvo,
         )
         resumo = experimento_mod.executar(
             config,
@@ -131,8 +136,11 @@ def ensemble(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...)) 
     contexto = _ctx(ctx)
     try:
         pasta_experimento = Path(pasta_experimento)
-        dados = _dataset_do_experimento(pasta_experimento)
-        resultado = ensemble_mod.montar(pasta_experimento, dados, detalhado=contexto.detalhado)
+        pacote = _pacote_do_experimento(pasta_experimento)
+        horizonte = int(pacote["meta"].get("config", {}).get("horizonte_dias_letivos", 7))
+        resultado = ensemble_mod.montar(
+            pasta_experimento, pacote["dataset"], purga=horizonte, detalhado=contexto.detalhado
+        )
         corpo = {
             "membros": resultado.membros,
             "pesos": resultado.pesos,
@@ -153,12 +161,10 @@ def destilar(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...)) 
     try:
         pasta_experimento = Path(pasta_experimento)
         dados = _dataset_do_experimento(pasta_experimento)
-        calibracao = json.loads((pasta_experimento / "calibracao.json").read_text(encoding="utf-8"))
         corpo = exp_mod._executar_destilacao(
             exp_mod.ConfigExperimento(pasta_dataset=Path()),
             pasta_experimento,
             dados,
-            {"resumo": calibracao, "ajuste": calibracao},
             contexto.detalhado,
         )
         contexto_mod.emitir(contexto, corpo, titulo="Destilação concluída:")
@@ -270,6 +276,11 @@ def relatorio(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...))
 
 def _dataset_do_experimento(pasta: Path):
     """Localiza o dataset usado por um experimento a partir do estado."""
+    return _pacote_do_experimento(pasta)["dataset"]
+
+
+def _pacote_do_experimento(pasta: Path) -> dict:
+    """Dataset e metadado usados por um experimento, a partir do estado."""
     from frequencia.pipelines import dataset as dataset_mod
 
     alvo = Path(pasta) / "estado.json"
@@ -277,6 +288,6 @@ def _dataset_do_experimento(pasta: Path):
         estado = json.loads(alvo.read_text(encoding="utf-8"))
         pasta_dataset = estado.get("config", {}).get("pasta_dataset")
         if pasta_dataset:
-            return dataset_mod.carregar_dataset(Path(pasta_dataset))["dataset"]
+            return dataset_mod.carregar_dataset(Path(pasta_dataset))
     msg = f"Estado do experimento ausente em {pasta}. Execute o ciclo completo antes."
     raise FileNotFoundError(msg)

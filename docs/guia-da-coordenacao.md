@@ -4,7 +4,7 @@ Guia de bolso para usar o indicador de risco de infrequência no dia a dia da es
 
 ## O que é o indicador
 
-É uma probabilidade entre 0 e 1 de o estudante acumular duas ou mais faltas nos próximos sete dias letivos. Ele vem do histórico de chamadas, faltas, saídas e entradas que a escola já registra. O cálculo acontece no aparelho da coordenação; nada é enviado a servidores externos.
+É uma probabilidade entre 0 e 1 de o estudante acumular duas ou mais faltas nos próximos sete dias letivos, ou de deixar a escola nesse período. Ele vem do histórico de chamadas, faltas, saídas e entradas que a escola já registra. O cálculo acontece no aparelho da coordenação; nada é enviado a servidores externos.
 
 O indicador é calculado a partir de padrões de frequência. Ele não mede caráter, família, esforço ou intenção.
 
@@ -22,7 +22,7 @@ O indicador é calculado a partir de padrões de frequência. Ele não mede car�
 | Elemento | Como ler |
 | --- | --- |
 | Probabilidade | chance estimada de faltas na próxima semana |
-| Intervalo | faixa de incerteza; quanto maior, mais cautela |
+| Leitura do modelo | risco, sem risco ou indefinido no nível de confiança declarado; indefinido pede mais cautela |
 | Faixa de risco | baixo, médio ou alto, pelos limiares do modelo |
 | Estado de confiança | indica se o histórico é suficiente e se o modelo está atualizado |
 | Alerta | indica persistência do padrão, com histerese |
@@ -33,7 +33,7 @@ O indicador é calculado a partir de padrões de frequência. Ele não mede car�
 ### Risco alto
 
 - Comece pelo topo da lista diária.
-- Leia a probabilidade com o intervalo.
+- Leia a probabilidade com a leitura do modelo (risco, sem risco ou indefinido).
 - Verifique o estado de confiança.
 - Converse com a professora e a equipe pedagógica.
 - Procure entender o contexto antes de agir.
@@ -59,7 +59,7 @@ O indicador é calculado a partir de padrões de frequência. Ele não mede car�
 - Decorar listas antigas.
 - Compartilhar listas fora da equipe autorizada.
 - Tratar o número como sentença sobre o estudante.
-- Ignorar o intervalo e o estado de confiança.
+- Ignorar a leitura indefinida e o estado de confiança.
 - Usar um modelo desatualizado.
 
 ## Como registrar feedback
@@ -81,7 +81,7 @@ O indicador é calculado a partir de padrões de frequência. Ele não mede car�
 
 ### O estudante está no topo da lista
 
-Leia o intervalo e o estado de confiança. Converse com a professora. Procure entender se houve mudança recente. Registre o que foi observado. O objetivo é apoio, não vigilância.
+Leia a leitura do modelo e o estado de confiança. Converse com a professora. Procure entender se houve mudança recente. Registre o que foi observado. O objetivo é apoio, não vigilância.
 
 ### O indicador está alto, mas a professora diz que o estudante está vindo bem
 

@@ -3,9 +3,19 @@
 
 Para cada dia de referência D, as features vêm do snapshot as-of do fim de D
 (ponto-in-tempo estrito) e o rótulo vem dos 7 dias letivos seguintes no
-estado final. A separação treino/validação/teste é por tempo, com intervalo
-de purga do tamanho do horizonte entre blocos, para que nenhum rótulo
-atravesse a fronteira.
+estado final: positivo com pelo menos duas faltas na janela ou com
+desistência dentro dela. Sem a segunda condição, quem desiste no começo da
+janela teria as faltas truncadas e rótulo negativo justamente no desfecho
+mais grave (ADR-019).
+
+Uma fração de alunos, escolhida por hash do identificador, fica fora de todo
+o treino: suas linhas de histórico curto (abaixo do aquecimento) formam as
+divisões frio_calibracao e frio_teste, que medem a partida a frio, regime
+que o teste temporal no fim do período nunca exercita (ADR-022).
+
+A separação treino/validação/teste é por tempo, com intervalo de purga do
+tamanho do horizonte entre blocos, para que nenhum rótulo atravesse a
+fronteira.
 """
 
 from __future__ import annotations
@@ -39,6 +49,7 @@ class ConfigDataset:
     ponto_no_tempo: str = "estrito"  # estrito | atual
     perfil: str | None = None
     versao: str = ""
+    fracao_reserva_frio: float = 0.2
 
 
 def _dias_letivos_apos(dias: list[str], dia: str, quantidade: int) -> list[str]:
@@ -80,15 +91,14 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
 
     # Rótulos a partir do diário final, por aluno e janela futura.
     faltou_final = diario_final.select("aluno_id", "dia", "faltou")
+    desistencias = tabelas["alunos"].select("aluno_id", "desistente_em")
     por_dia: list[pl.DataFrame] = []
     for dia in dias_referencia:
         janela = _dias_letivos_apos(dias, dia, config.horizonte_dias_letivos)
-        rotulos = (
+        faltas_janela = (
             faltou_final.filter(pl.col("dia").is_in(janela))
             .group_by("aluno_id")
             .agg(pl.col("faltou").sum().alias("faltas_futuras"))
-            .with_columns((pl.col("faltas_futuras") >= config.limiar_rotulo).alias("rotulo"))
-            .select("aluno_id", "faltas_futuras", "rotulo")
         )
         instante = None if config.ponto_no_tempo == "atual" else f"{dia}{FIM_DIA}"
         diario_asof = diario_mod.materializar(tabelas, instante=instante, ate_dia=dia)
@@ -99,7 +109,26 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
             feriados=feriados,
             dias_restantes_periodo=sum(1 for d in dias if d > dia),
         )
-        frame = frame.join(rotulos, on="aluno_id", how="inner")
+        # Junção pela esquerda: quem desiste no primeiro dia da janela não
+        # tem nenhuma linha nela, e uma junção interna o descartaria.
+        frame = (
+            frame.join(faltas_janela, on="aluno_id", how="left")
+            .with_columns(pl.col("faltas_futuras").fill_null(0))
+            .join(desistencias.rename({"desistente_em": "_desistente_em"}), on="aluno_id", how="left")
+            .with_columns(
+                (
+                    pl.col("_desistente_em").is_not_null()
+                    & (pl.col("_desistente_em") > dia)
+                    & (pl.col("_desistente_em") <= janela[-1])
+                ).alias("desistiu_na_janela")
+            )
+            .with_columns(
+                ((pl.col("faltas_futuras") >= config.limiar_rotulo) | pl.col("desistiu_na_janela")).alias(
+                    "rotulo"
+                )
+            )
+            .drop("_desistente_em")
+        )
         frame = frame.filter(
             (pl.col("historico_dias") >= config.min_historico) & pl.col("rotulo").is_not_null()
         )
@@ -120,7 +149,10 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
         .then(pl.lit("teste"))
         .otherwise(pl.lit("purga"))
         .alias("divisao")
-    ).filter(pl.col("divisao") != "purga")
+    )
+    dataset = _reservar_partida_a_frio(
+        dataset, config.fracao_reserva_frio, fim_calibracao=fronteiras["validacao_fim"]
+    ).filter(~pl.col("divisao").is_in(["purga", "descartada"]))
 
     pasta_destino = caminhos.caminho("processados") / _identificador(config)
     pasta_destino.mkdir(parents=True, exist_ok=True)
@@ -134,6 +166,13 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
         "taxa_rotulo": round(
             float(dataset.select(pl.col("rotulo").cast(pl.Float64).mean()).item(0, 0) or 0.0), 4
         ),
+        "positivos_por_desistencia": int(
+            dataset.filter(
+                pl.col("desistiu_na_janela") & (pl.col("faltas_futuras") < config.limiar_rotulo)
+            ).height
+        )
+        if "desistiu_na_janela" in dataset.columns
+        else 0,
         "divisao": dataset.group_by("divisao")
         .agg(
             pl.len().alias("linhas"),
@@ -153,6 +192,7 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
             "passo": config.passo,
             "ponto_no_tempo": config.ponto_no_tempo,
             "perfil": config.perfil,
+            "fracao_reserva_frio": config.fracao_reserva_frio,
         },
         "resumo": resumo,
         "linhagem": {
@@ -174,6 +214,53 @@ def construir(config: ConfigDataset, *, detalhado: bool = False) -> dict:
         detalhado=detalhado,
     )
     return {"pasta": pasta_destino, "meta": meta, "dataset": dataset}
+
+
+def _balde_aluno(aluno_id: str) -> float:
+    """Posição estável do aluno em [0, 1), independente de semente e ordem."""
+    import hashlib
+
+    return int(hashlib.sha256(aluno_id.encode("utf-8")).hexdigest()[:8], 16) / 16**8
+
+
+def _reservar_partida_a_frio(
+    dataset: pl.DataFrame, fracao: float, *, fim_calibracao: str | None = None
+) -> pl.DataFrame:
+    """Separa alunos reservados para calibrar e testar a partida a frio.
+
+    Os alunos reservados saem do treino, da validação e do teste. Só as
+    linhas com histórico abaixo do aquecimento ficam, metade dos alunos em
+    frio_calibracao e metade em frio_teste; as demais são descartadas.
+    Alunos matriculados tarde têm histórico curto em qualquer época, então
+    frio_calibracao só aceita dias até fim_calibracao: a calibração nunca
+    vê datas do período de teste.
+    """
+    from frequencia.features.confianca import LIMIARES_CONFIANCA
+
+    if fracao <= 0 or dataset.height == 0:
+        return dataset
+    aquecimento = LIMIARES_CONFIANCA["aquecimento_dias"]
+    baldes = (
+        dataset.select("aluno_id")
+        .unique()
+        .with_columns(pl.col("aluno_id").map_elements(_balde_aluno, return_dtype=pl.Float64).alias("_balde"))
+    )
+    return (
+        dataset.join(baldes, on="aluno_id", how="left")
+        .with_columns(
+            pl.when(pl.col("_balde") >= fracao)
+            .then(pl.col("divisao"))
+            .when(pl.col("historico_dias") >= aquecimento)
+            .then(pl.lit("descartada"))
+            .when((pl.col("_balde") < fracao / 2) & (pl.col("dia") > (fim_calibracao or "9999-12-31")))
+            .then(pl.lit("descartada"))
+            .when(pl.col("_balde") < fracao / 2)
+            .then(pl.lit("frio_calibracao"))
+            .otherwise(pl.lit("frio_teste"))
+            .alias("divisao")
+        )
+        .drop("_balde")
+    )
 
 
 def _dataset_vazio() -> pl.DataFrame:
@@ -199,6 +286,8 @@ def _identificador(config: ConfigDataset) -> str:
     )
     if config.perfil:
         corpo += f"-{config.perfil}"
+    if config.fracao_reserva_frio:
+        corpo += f"-f{round(config.fracao_reserva_frio * 100)}"
     return config.versao or corpo
 
 

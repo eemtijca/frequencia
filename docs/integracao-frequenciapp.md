@@ -21,7 +21,7 @@ O app computa as features no dispositivo a partir dos próprios dados: o modelo 
 
 ## Recomendações de UX
 
-- Exibir o indicador como sugestão com incerteza: probabilidade, faixa de risco e o intervalo conforme quando houver espaço.
+- Exibir o indicador como sugestão com incerteza: probabilidade, faixa de risco e a leitura do conjunto conforme (risco, sem risco ou indefinido) quando houver espaço.
 - Respeitar o estado_confianca: sem_historico e dados_insuficientes escondem o número; em_observacao mostra com o aviso curto; modelo_desatualizado suprime com a mensagem aprovada.
 - Usar o vocabulário de mensagens do manifesto, sem criar frases novas na interface.
 - Priorizar Top-K diário no painel em vez de limiar fixo: a capacidade da coordenação é o limite operacional real.

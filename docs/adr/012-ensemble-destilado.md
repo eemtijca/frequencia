@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceita.
+Aceita, com o alvo da destilação, o uso da discordância e o conjunto de treino do ensemble substituídos pela ADR-020.
 
 ## Contexto
 

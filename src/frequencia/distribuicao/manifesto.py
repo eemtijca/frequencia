@@ -17,6 +17,8 @@ from typing import Any
 from frequencia.infra.erros import ErroContrato
 
 VERSAO_FORMATO = "1"
+# Versão 2: a saída troca intervalo_conformal por conjunto_conformal (ADR-021).
+VERSAO_CONTRATO = "2"
 
 CAMPOS_OBRIGATORIOS = (
     "versao_manifesto",
@@ -83,7 +85,7 @@ def montar(
     arquivos: dict[str, str],
     min_app_versao: str = "1.4.0",
     validade_dias: int = 180,
-    versao_contrato: str = "1",
+    versao_contrato: str = VERSAO_CONTRATO,
     versao_catalogo_features: str = "1.0.0",
     perfis: list[dict] | None = None,
     mensagens: dict[str, str] | None = None,
@@ -157,8 +159,8 @@ def validar(manifesto: dict) -> None:
         if campo not in manifesto["calibracao"]:
             msg = f"Calibração sem o parâmetro {campo}."
             raise ErroContrato(msg)
-    if "quantis" not in manifesto["conformal"]:
-        msg = "Conformal sem os quantis por grupo."
+    if "limiares" not in manifesto["conformal"]:
+        msg = "Conformal sem os limiares dos conjuntos por grupo."
         raise ErroContrato(msg)
     for chave in ("entrada", "saida", "dias_consecutivos_entrada"):
         if chave not in manifesto["limiares_alerta"]:

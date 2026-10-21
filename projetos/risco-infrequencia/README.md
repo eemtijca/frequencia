@@ -12,8 +12,8 @@ A coordenação escolar tem minutos por dia para decidir onde olhar. O painel mo
 | --- | --- |
 | Unidade de previsão | estudante por dia de referência |
 | Horizonte | sete dias letivos seguintes |
-| Rótulo | duas ou mais faltas contando enquanto matriculado |
-| Saída | probabilidade calibrada, intervalo conforme, faixa de risco, estado de confiança e alerta com histerese |
+| Rótulo | duas ou mais faltas no horizonte, ou desistência dentro dele (ADR-019) |
+| Saída | probabilidade calibrada, conjunto conforme, faixa de risco, estado de confiança e alerta com histerese |
 
 ## Público e uso
 

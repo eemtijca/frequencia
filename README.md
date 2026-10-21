@@ -8,7 +8,7 @@
 
 Motor científico do FrequenciApp: treina, avalia, empacota e publica modelos leves de risco de infrequência escolar para inferência local no navegador. Mobile-first, sem ruído e com privacidade por padrão, herdando o estilo e as convenções do [FrequenciApp](https://github.com/eemtijca/frequenciapp).
 
-O primeiro modelo estima, para cada estudante, a probabilidade de acumular pelo menos duas faltas nos próximos sete dias letivos. A previsão vira um indicador de apoio no painel da coordenação: nunca uma decisão automática, sempre sujeita a revisão humana. O artefato publicado é um arquivo JavaScript puro de poucos kilobytes, com calibração, intervalos de confiança, estados de confiança e histerese embutidos, que roda inteiramente no PWA, offline, em celular modesto.
+O primeiro modelo estima, para cada estudante, a probabilidade de acumular pelo menos duas faltas nos próximos sete dias letivos ou de desistir nesse período. A previsão vira um indicador de apoio no painel da coordenação: nunca uma decisão automática, sempre sujeita a revisão humana. O artefato publicado é um arquivo JavaScript puro de poucos kilobytes, com calibração, intervalos de confiança, estados de confiança e histerese embutidos, que roda inteiramente no PWA, offline, em celular modesto.
 
 ## Começando em 5 minutos
 
@@ -117,7 +117,7 @@ O volume `dados` do Docker é separado do `var/` local do venv. Escolha um camin
 - **Catálogo de features como contrato**: 47 features documentadas com nome, tipo, janela, origem, dependência de configuração e valor padrão; ordinais de justificativa com códigos raros agrupados e texto livre fora do modelo.
 - **Dataset temporal sem vazamento**: unidade aluno-dia com rótulo futuro de sete dias letivos, features materializadas como snapshot ponto-in-tempo (correções retroativas não contaminam o passado) e separação treino, validação e teste por tempo com purga do horizonte.
 - **Ensemble offline, modelo leve publicado**: sete membros de base (LightGBM curto e médio, XGBoost, CatBoost, histogramas do scikit-learn, regressão logística e baseline de regras) combinados por regressão logística sobre previsões fora da dobra; a destilação entrega um estudante LightGBM de profundidade três que cabe no navegador.
-- **Confiança estatística completa**: calibração de Platt regularizada em direção à identidade, encolhimento para a taxa base no primeiro mês, predição conforme Mondrian por série e faixa de histórico, curva de aprendizado por volume de histórico e discordância entre membros como incerteza.
+- **Confiança estatística completa**: calibração de Platt com prior em direção à identidade, ajustada uma única vez fora da amostra sobre o preditor publicado, encolhimento para a taxa base no primeiro mês, predição conforme Mondrian por série e faixa de histórico e curva de aprendizado por volume de histórico. A discordância entre membros do ensemble é diagnóstico offline no painel.
 - **Inferência local com fallback**: pacote zip com modelo.js, fallback.js de regras espelhadas, manifest.json de compatibilidade, dados-teste.json para autoverificação e modelo-cartao.md; o app lê o manifesto, decide compatibilidade e nunca carrega modelo novo durante a chamada.
 - **CLI completa**: doze grupos funcionais cobrindo o ciclo de dados a auditoria, com modo seco, saída JSON, idempotência por etapa e força apenas com justificativa registrada.
 - **Painel de governança**: dezesseis páginas Streamlit sobre o mesmo motor da CLI, com papéis, tarefas de fundo, promoção com checklist e confirmação dupla para publicar, reverter e revogar.

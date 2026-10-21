@@ -30,6 +30,9 @@ def construir(
     ponto_no_tempo: str = typer.Option("estrito", help="estrito (as-of) ou atual (estado final)."),
     perfil: str = typer.Option("", help="Filtro de perfil, como 'frequencia_por_aula=true'."),
     versao: str = typer.Option("", help="Identificador explícito do dataset."),
+    fracao_reserva_frio: float = typer.Option(
+        0.2, help="Fração de alunos reservados para calibrar e testar a partida a frio (0 desliga)."
+    ),
 ) -> None:
     """Constrói o dataset temporal com separação estrita por tempo."""
     contexto = _ctx(ctx)
@@ -43,6 +46,7 @@ def construir(
             ponto_no_tempo=ponto_no_tempo,
             perfil=perfil or None,
             versao=versao,
+            fracao_reserva_frio=fracao_reserva_frio,
         )
         if contexto.seco:
             corpo = {

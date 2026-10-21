@@ -45,7 +45,12 @@ from frequencia.pipelines import (
 )
 from frequencia.pipelines.treino import ConfigTreino
 
-ETAPAS = ("treino", "ensemble", "calibracao", "destilacao", "avaliacao", "exportacao", "empacotamento")
+# Divisões do dataset usadas para calibrar o estudante: nunca vistas por ele.
+DIVISOES_CALIBRACAO = ("validacao", "frio_calibracao")
+# Linhas mínimas, com as duas classes, para avaliar a partida a frio.
+LINHAS_MINIMAS_FRIO = 300
+
+ETAPAS = ("treino", "ensemble", "destilacao", "calibracao", "avaliacao", "exportacao", "empacotamento")
 
 
 @dataclass
@@ -59,6 +64,7 @@ class ConfigExperimento:
     dobras_ensemble: int = 3
     versao_modelo: str = ""
     min_app_versao: str = "1.4.0"
+    taxa_alerta_alvo: float = calibracao_mod.TAXA_ALERTA_ALVO
     detalhes: dict = field(default_factory=dict)
 
 
@@ -83,6 +89,7 @@ def executar(
         "dobras_ensemble": config.dobras_ensemble,
         "versao_modelo": config.versao_modelo,
         "min_app_versao": config.min_app_versao,
+        "taxa_alerta_alvo": config.taxa_alerta_alvo,
     }
     chave = _chave_configuracao(estado["config"], config.pasta_dataset)
     if forcar:
@@ -117,21 +124,21 @@ def executar(
 
     resultado_ensemble = execucao.rodar(
         "ensemble",
-        lambda: _executar_ensemble(config, pasta, dados, detalhado),
+        lambda: _executar_ensemble(config, pasta, dados, _horizonte(pacote), detalhado),
     )
     resumo["ensemble"] = _resumir_ensemble(resultado_ensemble)
 
-    resultado_calibracao = execucao.rodar(
-        "calibracao",
-        lambda: _executar_calibracao(config, pasta, detalhado),
-    )
-    resumo["calibracao"] = resultado_calibracao["resumo"]
-
     resultado_destilacao = execucao.rodar(
         "destilacao",
-        lambda: _executar_destilacao(config, pasta, dados, resultado_calibracao, detalhado),
+        lambda: _executar_destilacao(config, pasta, dados, detalhado),
     )
     resumo["destilacao"] = resultado_destilacao
+
+    resultado_calibracao = execucao.rodar(
+        "calibracao",
+        lambda: _executar_calibracao(config, pasta, dados, detalhado),
+    )
+    resumo["calibracao"] = resultado_calibracao["resumo"]
 
     resultado_avaliacao = execucao.rodar(
         "avaliacao",
@@ -167,6 +174,15 @@ def executar(
         saida.write("\n")
     # A promoção a candidato lê o veredito do registro (ADR-018).
     estado_infra.registrar_gates("risco-infrequencia", resultado_pacote["resumo"]["versao_modelo"], veredito)
+    resumo["run_mlflow_publicado"] = _registrar_mlflow_publicado(
+        identificador,
+        estado["config"],
+        pasta,
+        resultado_calibracao,
+        resultado_avaliacao,
+        resultado_pacote,
+        veredito,
+    )
 
     logs.registrar(
         "experimentos.ciclo",
@@ -176,6 +192,59 @@ def executar(
         detalhado=detalhado,
     )
     return resumo
+
+
+def _registrar_mlflow_publicado(
+    identificador: str,
+    config: dict,
+    pasta: Path,
+    resultado_calibracao: dict,
+    resultado_avaliacao: dict,
+    resultado_pacote: dict,
+    veredito: dict,
+) -> str:
+    """Rastreia no MLflow o artefato que vai para o navegador.
+
+    A run da etapa de treino registra o modelo de referência, que não é
+    publicado; esta run registra o estudante calibrado, as métricas do teste
+    sobre o preditor publicado, os gates e os arquivos do pacote.
+    """
+    relatorio = resultado_avaliacao["resumo"]
+    calibracao = resultado_calibracao["resumo"]
+    metricas = {f"teste_{chave}": valor for chave, valor in relatorio.get("metricas", {}).items()}
+    frio = relatorio.get("partida_a_frio") or {}
+    metricas.update({f"frio_{chave}": valor for chave, valor in (frio.get("metricas") or {}).items()})
+    conformal = relatorio.get("conformal") or {}
+    for chave in ("cobertura_minima_por_classe", "fracao_conjuntos_unitarios"):
+        if conformal.get(chave) is not None:
+            metricas[f"conformal_{chave}"] = conformal[chave]
+    metricas.update({f"gate_{nome}": float(ok) for nome, ok in veredito["vereditos"].items()})
+    metricas["gates_aprovados"] = float(veredito["aprovado"])
+    parametros = {
+        **{f"config_{chave}": valor for chave, valor in config.items()},
+        "a_platt": calibracao.get("a_platt"),
+        "b_platt": calibracao.get("b_platt"),
+        "lambda_platt": calibracao.get("lambda_platt"),
+        "limiar_alerta_entrada": calibracao.get("limiares_alerta", {}).get("entrada"),
+        "limiar_alerta_saida": calibracao.get("limiares_alerta", {}).get("saida"),
+        "versao_modelo": resultado_pacote["resumo"]["versao_modelo"],
+    }
+    pasta_pacote = Path(resultado_pacote["resumo"]["pasta"])
+    artefatos = [
+        pasta_pacote / "modelo.js",
+        pasta_pacote / "manifest.json",
+        pasta / "avaliacao.json",
+        pasta / "calibracao.json",
+        pasta / "gates.json",
+    ]
+    return treino_mod.registrar_execucao_mlflow(
+        f"{identificador}-publicado",
+        parametros=parametros,
+        metricas=metricas,
+        artefatos=artefatos,
+        estagio="publicado",
+        etiquetas={"identificador": identificador},
+    )
 
 
 def _executar_treino(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, detalhado: bool):
@@ -198,9 +267,21 @@ def _executar_treino(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame
     }
 
 
-def _executar_ensemble(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, detalhado: bool):
+def _horizonte(pacote_dataset: dict) -> int:
+    """Horizonte do rótulo em dias letivos, lido do metadado do dataset."""
+    return int(pacote_dataset.get("meta", {}).get("config", {}).get("horizonte_dias_letivos", 7))
+
+
+def _executar_ensemble(
+    config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, horizonte: int, detalhado: bool
+):
     resultado = ensemble_mod.montar(
-        pasta, dados, semente=config.semente, dobras=config.dobras_ensemble, detalhado=detalhado
+        pasta,
+        dados,
+        semente=config.semente,
+        dobras=config.dobras_ensemble,
+        purga=horizonte,
+        detalhado=detalhado,
     )
     return {
         "membros": resultado.membros,
@@ -211,66 +292,88 @@ def _executar_ensemble(config: ConfigExperimento, pasta: Path, dados: pl.DataFra
     }
 
 
-def _executar_calibracao(config: ConfigExperimento, pasta: Path, detalhado: bool) -> dict:
+def _executar_destilacao(
+    config: ConfigExperimento,
+    pasta: Path,
+    dados: pl.DataFrame,
+    detalhado: bool,
+) -> dict:
+    """Destila o ensemble final para o estudante publicável.
+
+    O alvo é a previsão do ensemble reajustado em todo o treino, sem
+    calibração: a calibração é ajustada depois, uma única vez, sobre a saída
+    do próprio estudante (ADR-020). Destilar alvos já calibrados e calibrar
+    de novo aplicava Platt duas vezes.
+    """
     arquivo_oof = pasta / "ensemble" / "oof.npz"
     if not arquivo_oof.is_file():
         msg = "OOF do ensemble ausente: execute a etapa de ensemble antes."
         raise ErroEstado(msg)
     oof = np.load(file=arquivo_oof, allow_pickle=False)
-    ajuste = calibracao_mod.ajustar(
-        oof["blend"],
-        oof["rotulos"],
-        [str(valor) for valor in oof["series"].tolist()],
-        oof["historico"].astype(float),
-    )
-    curva = calibracao_mod.curva_aprendizado(oof["blend"], oof["rotulos"], oof["historico"].astype(float))
-    corpo = {
-        "resumo": {
-            **ajuste.para_dict(),
-            "curva_aprendizado": curva,
-        },
-        "ajuste": ajuste.para_dict(),
-    }
-    with (pasta / "calibracao.json").open("w", encoding="utf-8") as saida:
-        json.dump(corpo["resumo"], saida, ensure_ascii=False, indent=2, sort_keys=True)
-        saida.write("\n")
-    return corpo
-
-
-def _executar_destilacao(
-    config: ConfigExperimento,
-    pasta: Path,
-    dados: pl.DataFrame,
-    resultado_calibracao: dict,
-    detalhado: bool,
-) -> dict:
-    oof = np.load(file=pasta / "ensemble" / "oof.npz", allow_pickle=False)
-    calibradas = calibracao_mod.aplicar_platt(
-        oof["blend"],
-        resultado_calibracao["ajuste"]["a_platt"],
-        resultado_calibracao["ajuste"]["b_platt"],
-    )
-    ajuste_treino = (
-        dados.filter(pl.col("divisao").is_in(["treino", "validacao"]))
-        .sort(["dia", "aluno_id"])
-        .with_row_index("linha")
-    )
+    ajuste_treino = dados.filter(pl.col("divisao") == "treino").sort(["dia", "aluno_id"])
     from frequencia.features.catalogo import NOMES_FEATURES
 
-    x_tudo = ajuste_treino.select(NOMES_FEATURES).to_numpy()
-    linhas_oof = oof["linhas_oof"].astype(int)
-    x = x_tudo[linhas_oof]
-    if len(x) != len(calibradas):
+    x = ajuste_treino.select(NOMES_FEATURES).to_numpy()
+    alvos = oof["blend_treino"]
+    if len(alvos) != len(x):
         msg = (
-            "Divergência de linhas entre OOF e dataset na destilação. "
+            "Divergência de linhas entre o ensemble e o dataset na destilação. "
             "Reconstrua o dataset com o mesmo passo do experimento."
         )
         raise ErroEstado(msg)
-    corpo = treino_mod.destilar(pasta, alvos=calibradas, x=x, semente=config.semente)
+    corpo = treino_mod.destilar(pasta, alvos=alvos, x=x, semente=config.semente)
     logs.registrar(
         "experimentos.destilar",
         estagio="destilacao",
         tamanho=corpo["tamanho_bytes"],
+        detalhado=detalhado,
+    )
+    return corpo
+
+
+def _conjunto(dados: pl.DataFrame, divisoes: tuple[str, ...]) -> pl.DataFrame:
+    return dados.filter(pl.col("divisao").is_in(list(divisoes))).sort(["dia", "aluno_id"])
+
+
+def _executar_calibracao(
+    config: ConfigExperimento,
+    pasta: Path,
+    dados: pl.DataFrame,
+    detalhado: bool,
+) -> dict:
+    """Calibra o estudante no conjunto de validação, que ele não viu."""
+    from frequencia.features.catalogo import NOMES_FEATURES
+
+    calibracao = _conjunto(dados, DIVISOES_CALIBRACAO)
+    if calibracao.height == 0 or calibracao["rotulo"].n_unique() < 2:
+        msg = "Conjunto de calibração vazio ou com uma só classe. Gere mais dias letivos."
+        raise ErroEstado(msg)
+    estudante = treino_mod.carregar_estudante(pasta)
+    bruto = estudante.predict_proba(calibracao.select(NOMES_FEATURES).to_numpy())[:, 1]
+    rotulos = calibracao["rotulo"].cast(pl.Int32).to_numpy()
+    historico = calibracao["historico_dias"].to_numpy().astype(float)
+    ajuste = calibracao_mod.ajustar(bruto, rotulos, calibracao["serie_id"].to_list(), historico)
+    publicadas = calibracao_mod.prever_publicado(
+        bruto, ajuste.a_platt, ajuste.b_platt, ajuste.taxa_base, historico
+    )
+    curva = calibracao_mod.curva_aprendizado(publicadas, rotulos, historico)
+    limiares = calibracao_mod.limiares_alerta(publicadas, config.taxa_alerta_alvo)
+    corpo = {
+        "resumo": {
+            **ajuste.para_dict(),
+            "linhas_calibracao": int(calibracao.height),
+            "curva_aprendizado": curva,
+            "limiares_alerta": limiares,
+        },
+        "ajuste": {**ajuste.para_dict(), "limiares_alerta": limiares},
+    }
+    with (pasta / "calibracao.json").open("w", encoding="utf-8") as saida:
+        json.dump(corpo["resumo"], saida, ensure_ascii=False, indent=2, sort_keys=True)
+        saida.write("\n")
+    logs.registrar(
+        "experimentos.calibrar",
+        estagio="calibracao",
+        linhas=int(calibracao.height),
         detalhado=detalhado,
     )
     return corpo
@@ -283,7 +386,8 @@ def _executar_avaliacao(
     resultado_calibracao: dict,
     detalhado: bool,
 ) -> dict:
-    teste = dados.filter(pl.col("divisao") == "teste")
+    """Avalia no teste o preditor publicado: estudante, Platt e aquecimento."""
+    teste = _conjunto(dados, ("teste",))
     from frequencia.features.catalogo import NOMES_FEATURES
 
     x_teste = teste.select(NOMES_FEATURES).to_numpy()
@@ -291,21 +395,33 @@ def _executar_avaliacao(
     estudante = treino_mod.carregar_estudante(pasta)
     bruto = estudante.predict_proba(x_teste)[:, 1]
     ajuste = resultado_calibracao["ajuste"]
-    calibradas = calibracao_mod.aplicar_platt(bruto, ajuste["a_platt"], ajuste["b_platt"])
+    historico = teste["historico_dias"].to_numpy().astype(float)
+    publicadas = calibracao_mod.prever_publicado(
+        bruto, ajuste["a_platt"], ajuste["b_platt"], ajuste["taxa_base"], historico
+    )
     baseline_prob = baseline.pontuar(x_teste)
+    chaves = [
+        calibracao_mod.chave_grupo(serie, int(dias))
+        for serie, dias in zip(teste["serie_id"].to_list(), historico, strict=True)
+    ]
+    conformal = calibracao_mod.avaliar_conjuntos(publicadas, y_teste, chaves, ajuste["limiares_conformal"])
 
     ajuste_dict = resultado_calibracao["resumo"]
     relatorio = avaliacao_mod.avaliar(
-        calibradas,
+        publicadas,
         y_teste,
         series=teste["serie_id"].to_list(),
         turmas=teste["turma_do_dia"].to_list(),
-        historico=teste["historico_dias"].to_numpy(),
+        historico=historico,
         dias=teste["dia"].to_list(),
         probabilidades_baseline=baseline_prob,
         ajuste_calibracao=ajuste_dict,
+        conformal=conformal,
+        limiar_alerta=ajuste["limiares_alerta"]["entrada"],
     )
     relatorio["curva_aprendizado"] = ajuste_dict.get("curva_aprendizado", [])
+    relatorio["partida_a_frio"] = _avaliar_partida_a_frio(dados, estudante, ajuste)
+    relatorio["comparacao_referencia"] = _comparar_referencia(pasta, x_teste, y_teste, relatorio)
     corpo = {"resumo": relatorio, "relatorio": relatorio}
     with (pasta / "avaliacao.json").open("w", encoding="utf-8") as saida:
         json.dump(relatorio, saida, ensure_ascii=False, indent=2, sort_keys=True)
@@ -318,6 +434,71 @@ def _executar_avaliacao(
         detalhado=detalhado,
     )
     return corpo
+
+
+def _comparar_referencia(pasta: Path, x_teste: np.ndarray, y_teste: np.ndarray, relatorio: dict) -> dict:
+    """Compara o publicado com o LightGBM único da etapa de treino.
+
+    Se o estudante destilado não supera um modelo único treinado nos mesmos
+    dados, o ensemble e a destilação não estão pagando a própria complexidade.
+    É informação para a revisão, não gate.
+    """
+    from sklearn.metrics import roc_auc_score
+
+    try:
+        referencia = treino_mod.carregar_modelo(pasta)
+    except Exception:
+        return {"avaliado": False, "motivo": "modelo de referência ausente"}
+    auc = float(roc_auc_score(y_teste, referencia.predict_proba(x_teste)[:, 1]))
+    return {
+        "avaliado": True,
+        "auc_referencia": round(auc, 4),
+        "ganho_absoluto": round(relatorio["metricas"]["auc"] - auc, 4),
+    }
+
+
+def _avaliar_partida_a_frio(dados: pl.DataFrame, estudante, ajuste: dict) -> dict:
+    """Avalia os alunos reservados nos primeiros dias de histórico.
+
+    Mede o aquecimento e os grupos de histórico curto, que o teste temporal
+    no fim do período não contém. Com poucas linhas ou uma só classe, o
+    relatório diz que não avaliou e por quê, em vez de inventar números.
+    """
+    from frequencia.features.catalogo import NOMES_FEATURES
+
+    frio = _conjunto(dados, ("frio_teste",))
+    if frio.height < LINHAS_MINIMAS_FRIO or frio["rotulo"].n_unique() < 2:
+        return {
+            "avaliado": False,
+            "linhas": int(frio.height),
+            "motivo": f"menos de {LINHAS_MINIMAS_FRIO} linhas com as duas classes nos alunos reservados",
+        }
+    historico = frio["historico_dias"].to_numpy().astype(float)
+    bruto = estudante.predict_proba(frio.select(NOMES_FEATURES).to_numpy())[:, 1]
+    publicadas = calibracao_mod.prever_publicado(
+        bruto, ajuste["a_platt"], ajuste["b_platt"], ajuste["taxa_base"], historico
+    )
+    rotulos = frio["rotulo"].cast(pl.Int32).to_numpy()
+    chaves = [
+        calibracao_mod.chave_grupo(serie, int(dias))
+        for serie, dias in zip(frio["serie_id"].to_list(), historico, strict=True)
+    ]
+    relatorio = avaliacao_mod.avaliar(
+        publicadas,
+        rotulos,
+        historico=historico,
+        limiar_alerta=ajuste["limiares_alerta"]["entrada"],
+        conformal=calibracao_mod.avaliar_conjuntos(publicadas, rotulos, chaves, ajuste["limiares_conformal"]),
+    )
+    return {
+        "avaliado": True,
+        "linhas": int(frio.height),
+        "alunos": int(frio["aluno_id"].n_unique()),
+        "metricas": relatorio["metricas"],
+        "calibracao": relatorio["calibracao"],
+        "conformal": relatorio["conformal"],
+        "por_faixa_historico": relatorio.get("por_faixa_historico", []),
+    }
 
 
 def _executar_exportacao(
@@ -356,14 +537,11 @@ def _executar_exportacao(
         },
         "conformal": {
             "nivel": ajuste["nivel_conformal"],
-            "quantis": ajuste["quantis_conformal"],
-            "cobertura_por_grupo": ajuste.get("cobertura_por_grupo", {}),
+            "metodo": ajuste["metodo_conformal"],
+            "limiares": ajuste["limiares_conformal"],
+            "cobertura_teste": resultado_avaliacao["resumo"].get("conformal", {}),
         },
-        "limiares_alerta": {
-            "entrada": 0.65,
-            "saida": 0.45,
-            "dias_consecutivos_entrada": 2,
-        },
+        "limiares_alerta": ajuste["limiares_alerta"],
         "confianca": {
             "aquecimento_dias": 30,
             "validade_modelo_dias": 180,
@@ -566,8 +744,9 @@ def _cartao_modelo(params: dict, relatorio: dict, pacote_dataset: dict) -> str:
         "## Finalidade e público",
         "",
         "Estima a probabilidade de um estudante acumular pelo menos duas faltas nos",
-        "próximos sete dias letivos, para apoiar a priorização da coordenação no",
-        "painel e no relatório por aluno. É sugestão de apoio, nunca decisão:",
+        "próximos sete dias letivos, ou de desistir nesse período, para apoiar a",
+        "priorização da coordenação no painel e no relatório por aluno. É",
+        "sugestão de apoio, nunca decisão:",
         "toda ação pedagógica passa por revisão humana.",
         "",
         "## Dados de treinamento",
@@ -576,7 +755,10 @@ def _cartao_modelo(params: dict, relatorio: dict, pacote_dataset: dict) -> str:
         f"- Linhas: {params.get('dataset', {}).get('linhas', 'n/d')}",
         f"- Taxa do rótulo: {params.get('dataset', {}).get('taxa_rotulo', 'n/d')}",
         "",
-        "## Métricas de validação",
+        "## Métricas no teste",
+        "",
+        "Medidas no conjunto de teste, sobre o preditor publicado: estudante,",
+        "calibração e aquecimento, exatamente como o modelo.js responde.",
         "",
         "| Métrica | Valor |",
         "| --- | --- |",
@@ -590,7 +772,11 @@ def _cartao_modelo(params: dict, relatorio: dict, pacote_dataset: dict) -> str:
             "",
             f"- Platt regularizado: a={params['calibracao']['a_platt']}, b={params['calibracao']['b_platt']}",
             f"- Taxa base de aquecimento: {params['calibracao']['taxa_base']}",
-            f"- Conformal Mondrian por série e faixa de histórico, nível {params['conformal']['nivel']}",
+            f"- Alerta: entrada {params['limiares_alerta']['entrada']} e saída "
+            f"{params['limiares_alerta']['saida']}, derivadas de uma taxa-alvo de "
+            f"{params['limiares_alerta'].get('taxa_alvo', 'n/d')} (fração dos alunos acima da entrada)",
+            "- Conjuntos de predição conformes Mondrian por série, faixa de histórico e classe, "
+            f"nível {params['conformal']['nivel']}",
             "- Estados de confiança, aquecimento de 30 dias e histerese de alerta embutidos no pacote",
             "",
             "## Limitações",
@@ -634,6 +820,7 @@ def _resumir_esperado(esperado: dict) -> dict:
         "probabilidade": esperado["probabilidade"],
         "estado_confianca": esperado["estado_confianca"],
         "alerta": esperado["alerta"],
+        "conjunto_conformal": esperado["conjunto_conformal"],
     }
 
 

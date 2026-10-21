@@ -21,7 +21,11 @@ def _node_disponivel() -> bool:
 
 
 def test_ciclo_completo_com_gates(experimento_completo: Path) -> None:
-    """O ciclo inteiro roda e todos os gates de promoção passam."""
+    """O ciclo inteiro roda e grava o veredito de todos os gates."""
+    gates = json.loads((experimento_completo / "gates.json").read_text(encoding="utf-8"))
+    obrigatorios = {"auc", "ece", "cobertura_conformal", "taxa_alerta", "melhora_sobre_baseline"}
+    assert obrigatorios <= set(gates["vereditos"])
+    assert set(gates["vereditos"]) | set(gates["nao_avaliados"]) >= {"ece_partida_a_frio"}
     estado = json.loads((experimento_completo / "estado.json").read_text(encoding="utf-8"))
     etapas = set(estado.get("etapas", {}).keys())
     assert {
@@ -140,29 +144,44 @@ def test_nenhuma_pessoa_nos_artefatos(experimento_completo: Path) -> None:
 
 
 def test_limiar_e_histerese_no_pacote(experimento_completo: Path) -> None:
-    """O modelo.js aplica histerese: dois dias altos ligam o alerta."""
+    """A histerese do modelo.js bate com a do Python numa sequência encadeada.
+
+    Os casos de teste são aplicados como dias seguidos de um mesmo estudante,
+    passando o estado do alerta de um dia para o outro nas duas linguagens.
+    """
     if not _node_disponivel():
         pytest.skip("Node indisponível neste ambiente.")
+    import joblib
+
+    from frequencia.pipelines import exportacao
+    from frequencia.pipelines.experimento import _NucleoEstudante
+
+    estado = json.loads((experimento_completo / "estado.json").read_text(encoding="utf-8"))
+    params = estado["etapas"]["exportacao"]["resultado"]["params"]
     empacotamento = json.loads((experimento_completo / "empacotamento.json").read_text(encoding="utf-8"))
     pasta = Path(empacotamento["pasta"])
-    dados = json.loads((pasta / "dados-teste.json").read_text(encoding="utf-8"))
-    caso = dados["casos"][0]
-    vetor = caso["vetor"]
-    # Força probabilidade alta dobrando as faltas recentes.
-    from frequencia.features.catalogo import NOMES_FEATURES
+    casos = json.loads((pasta / "dados-teste.json").read_text(encoding="utf-8"))["casos"]
+    vetores = [caso["vetor"] for caso in casos]
+    # Repete cada vetor para dar à histerese dias consecutivos iguais.
+    sequencia = [vetor for vetor in vetores for _ in range(3)]
 
-    vetor_alto = list(vetor)
-    vetor_alto[NOMES_FEATURES.index("faltas_7d")] = 7.0
-    vetor_alto[NOMES_FEATURES.index("faltas_consecutivas")] = 7.0
+    nucleo = _NucleoEstudante(joblib.load(experimento_completo / "estudante.joblib"))
+    anterior = None
+    esperados = []
+    for vetor in sequencia:
+        saida = exportacao.prever_em_python(
+            vetor, {"serie": "ser_alfa_1", "estado_alerta": anterior}, nucleo, params
+        )
+        anterior = {"em_alerta": saida["alerta"]["em_alerta"], "dias_acima": saida["alerta"]["dias_acima"]}
+        esperados.append([saida["alerta"]["em_alerta"], saida["alerta"]["dias_acima"]])
+
     roteiro = (
         "const m = require(" + json.dumps(str(pasta / "modelo.js")) + ");\n"
-        "let s = null;\n"
-        "const r1 = m.prever(" + json.dumps(vetor_alto) + ", "
-        "{serie: 'ser_alfa_1', estado_alerta: s});\n"
-        "const r2 = m.prever(" + json.dumps(vetor_alto) + ", "
-        "{serie: 'ser_alfa_1', estado_alerta: r1.alerta});\n"
-        "console.log(JSON.stringify({p1: r1.probabilidade, "
-        "a1: r1.alerta.em_alerta, a2: r2.alerta.em_alerta}));\n"
+        "const seq = " + json.dumps(sequencia) + ";\n"
+        "let s = null; const out = [];\n"
+        "for (const v of seq) { const r = m.prever(v, {serie: 'ser_alfa_1', estado_alerta: s});"
+        " s = r.alerta; out.push([r.alerta.em_alerta, r.alerta.dias_acima]); }\n"
+        "console.log(JSON.stringify(out));\n"
     )
     alvo = pasta / "_teste_histerese.cjs"
     alvo.write_text(roteiro, encoding="utf-8")
@@ -170,9 +189,38 @@ def test_limiar_e_histerese_no_pacote(experimento_completo: Path) -> None:
         concluido = subprocess.run(
             ["node", str(alvo)], capture_output=True, text=True, check=True, timeout=60
         )
-        corpo = json.loads(concluido.stdout.strip().splitlines()[-1])
-        assert corpo["p1"] > 0.1
-        # Primeiro dia alto não liga; segundo pode ligar conforme o limiar.
-        assert corpo["a2"] in (True, False)
+        obtidos = json.loads(concluido.stdout.strip().splitlines()[-1])
     finally:
         alvo.unlink(missing_ok=True)
+    assert obtidos == esperados
+    # Com o limiar derivado da taxa-alvo, a sequência precisa exercitar a
+    # histerese de fato: algum dia liga o alerta.
+    assert any(em_alerta for em_alerta, _ in esperados), "nenhum caso cruzou o limiar de entrada"
+
+
+def test_mlflow_rastreia_o_artefato_publicado(experimento_completo: Path) -> None:
+    """O MLflow registra a run do publicado, com métricas de teste e pacote."""
+    import mlflow
+
+    from frequencia.infra import ambiente
+
+    mlflow.set_tracking_uri(ambiente.validar().mlflow_uri)
+    runs = mlflow.search_runs(
+        experiment_names=["frequencia"],
+        filter_string="tags.estagio = 'publicado' and tags.identificador = 'smoke'",
+        output_format="list",
+    )
+    assert runs, "nenhuma run do artefato publicado"
+    run = runs[0]
+    assert "teste_auc" in run.data.metrics
+    assert "gates_aprovados" in run.data.metrics
+    artefatos = {item.path for item in mlflow.MlflowClient().list_artifacts(run.info.run_id)}
+    assert {"modelo.js", "manifest.json", "gates.json"} <= artefatos
+
+
+def test_avaliacao_compara_com_o_modelo_de_referencia(experimento_completo: Path) -> None:
+    """O relatório mostra se a destilação supera o LightGBM único."""
+    relatorio = json.loads((experimento_completo / "avaliacao.json").read_text(encoding="utf-8"))
+    comparacao = relatorio["comparacao_referencia"]
+    assert comparacao["avaliado"]
+    assert 0 < comparacao["auc_referencia"] < 1

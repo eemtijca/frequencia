@@ -27,6 +27,9 @@ ESTADOS_CONFIANCA = (
     "modelo_desatualizado",
 )
 
+# Padrão usado apenas quando não há conjunto de calibração (pacotes manuais
+# e testes): o experimento deriva entrada e saída da taxa-alvo de alerta
+# sobre a probabilidade publicada (ADR-023) e as grava no pacote.
 LIMIARES_ALERTA: dict[str, int | float] = {
     "entrada": 0.65,
     "saida": 0.45,

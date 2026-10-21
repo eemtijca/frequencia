@@ -9,7 +9,7 @@ O manifest.json é o documento que o FrequenciApp lê antes de qualquer coisa. O
 | versao_manifesto | texto | Versão do formato do manifesto (hoje 1). |
 | identificador | texto | Nome estável do modelo (risco-infrequencia). |
 | versao_modelo | texto | Versão desta publicação. |
-| versao_contrato | texto | Versão do contrato de inferência. |
+| versao_contrato | texto | Versão do contrato de inferência; a versão 2 troca `intervalo_conformal` por `conjunto_conformal` (ADR-021). |
 | versao_catalogo_features | texto | Versão do catálogo de features. |
 | criado_em | data e hora ISO | Momento da montagem do pacote. |
 | min_app_versao | versão | Versão mínima do FrequenciApp compatível. |
@@ -19,9 +19,9 @@ O manifest.json é o documento que o FrequenciApp lê antes de qualquer coisa. O
 | validade_ate | data | Data em que o app passa a exibir modelo desatualizado. |
 | dataset | objeto | Identificador, linhas e taxa do rótulo do treino. |
 | contrato | objeto | features (ordem fixa), padroes e tipos. |
-| calibracao | objeto | a_platt, b_platt, taxa_base, lambda e ECE medido. |
-| conformal | objeto | nível, quantis por grupo e cobertura por grupo. |
-| limiares_alerta | objeto | entrada, saída e dias_consecutivos_entrada. |
+| calibracao | objeto | a_platt, b_platt e taxa_base, ajustados no conjunto de validação sobre a saída do estudante. |
+| conformal | objeto | nível, método, limiares por grupo e classe (`negativo` e `positivo`) e cobertura medida no teste. |
+| limiares_alerta | objeto | entrada, saída, dias_consecutivos_entrada e a taxa_alvo da qual entrada e saída foram derivadas; idênticos aos do `modelo.js` do pacote. |
 | confianca | objeto | aquecimento_dias e validade_modelo_dias. |
 | mensagens | objeto | Vocabulário aprovado por estado de confiança. |
 | perfis_dados | lista | Perfis suportados com confiabilidade. |

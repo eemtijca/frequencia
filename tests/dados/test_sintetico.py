@@ -131,3 +131,18 @@ def test_calendario_respeita_feriados_e_recesso() -> None:
     assert "2026-07-15" not in {d.isoformat() for d in dias}
     assert "2026-09-07" not in {d.isoformat() for d in dias}
     assert all(dia.weekday() < 5 for dia in dias)
+
+
+def test_desistencia_acompanha_a_propensao() -> None:
+    """Quem falta mais desiste mais, com média próxima da taxa nominal."""
+    import numpy as np
+
+    from frequencia.dados import sintetico
+
+    rng = np.random.default_rng(3)
+    base = rng.random(20000)
+    cronico = rng.random(20000) < sintetico.PROPORCAO_CRONICA
+    propensao = np.where(cronico, 0.12 + 0.07 * base, 0.005 + 0.11 * base * base)
+    chances = np.array([sintetico.chance_desistencia(float(valor)) for valor in propensao])
+    assert abs(chances.mean() - sintetico.PROBABILIDADE_DESISTENCIA) < 0.005
+    assert chances[cronico].mean() > 2 * chances[~cronico].mean()

@@ -4,7 +4,7 @@ Como o indicador de risco deve e não deve ser usado pela escola. Este texto aco
 
 ## O que o indicador é
 
-Um número entre 0 e 1, com intervalo de confiança, que estima a chance de o estudante acumular duas ou mais faltas na semana letiva seguinte. Ele vem do histórico recente de chamadas, saídas e entradas do próprio estudante, comparado com a turma, com o calendário e com o contexto da série. Ele é calculado no aparelho da coordenação, e nada sai dele.
+Um número entre 0 e 1, com uma leitura de confiança (risco, sem risco ou indefinido), que estima a chance de o estudante acumular duas ou mais faltas na semana letiva seguinte, ou de deixar a escola nesse período. Ele vem do histórico recente de chamadas, saídas e entradas do próprio estudante, comparado com a turma, com o calendário e com o contexto da série. Ele é calculado no aparelho da coordenação, e nada sai dele.
 
 ## O que o indicador não é
 
@@ -16,7 +16,7 @@ Um número entre 0 e 1, com intervalo de confiança, que estima a chance de o es
 ## Como usar
 
 - Começar pelo topo da lista diária: a capacidade de olhar é o limite, e o modelo ordena por onde o olhar tem mais chance de prevenir.
-- Ler a probabilidade com o intervalo: incerteza grande pede conversa, não conclusão.
+- Ler a probabilidade com a leitura do modelo: indefinido pede conversa, não conclusão.
 - Respeitar os estados de confiança: histórico curto e modelo desatualizado avisam quando não confiar.
 - Registrar o que aconteceu (o feedback agregado melhora a calibração para a escola).
 - Descartar quando a realidade contradisser: o botão de descarte é dado de treino, não de discussão.

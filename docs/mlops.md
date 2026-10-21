@@ -8,10 +8,10 @@ O ciclo completo do modelo de risco de infrequência, do dado ao pacote, com o q
 flowchart TD
   A[Importação validada] --> B[Dataset temporal]
   B --> C[Treino do principal]
-  C --> D[Ensemble com OOF]
-  D --> E[Calibração e conformal]
-  E --> F[Destilação do estudante]
-  F --> G[Avaliação com gates]
+  C --> D[Ensemble com OOF no treino]
+  D --> E[Destilação do estudante]
+  E --> F[Calibração e conformal na validação]
+  F --> G[Avaliação no teste com gates]
   G --> H[Exportação JS e ONNX]
   H --> I[Empacotamento com manifesto]
   I --> J[Publicação com rollback]
@@ -31,21 +31,25 @@ As etapas rodam em ordem, cada uma grava artefato e estado, e reexecuções pula
 
 O modelo principal é LightGBM com parâmetros declarativos (config/experimento.yaml ou opções de linha). O rastreamento vai ao MLflow com parâmetros, métricas e o artefato; a run id volta no resumo. Com `--tentativas N`, o Optuna faz busca leve de num_leaves, learning_rate, min_child_samples e reg_lambda sobre a divisão temporal, com TPE semeado.
 
+## Separação dos conjuntos
+
+Cada divisão do dataset tem um papel único (ADR-020): o treino alimenta o modelo de referência, o ensemble e o estudante; a validação calibra o estudante, que nunca a viu; o teste mede o preditor publicado e decide os gates. Nenhum parâmetro é ajustado no conjunto em que é avaliado. Alunos reservados por hash (20% por padrão) ficam fora de tudo isso: suas linhas de histórico curto calibram (`frio_calibracao`) e testam (`frio_teste`) a partida a frio, regime que o teste do fim do período não contém (ADR-022).
+
 ## Ensemble
 
-Sete membros com vistas diferentes (famílias de modelo e subconjunto curto de features), dobras temporais expansivas com previsões fora da dobra, blending por regressão logística com pesos normalizados e registrados, discordância média como incerteza. Os membros finais são reajustados com treino mais validação e salvos em ensemble/ para reanálise.
-
-## Calibração
-
-Platt regularizado (lambda 0,5) sobre o blend fora da dobra, taxa base do rótulo, quantis conformes de Mondrian por série e faixa de histórico com nível 0,90, curva de aprendizado por volume de histórico. Resultado em calibracao.json com ECE antes e depois.
+Sete membros com vistas diferentes (famílias de modelo e subconjunto curto de features), dobras temporais expansivas sobre o treino com previsões fora da dobra e purga do horizonte (os sete dias letivos antes de cada bloco de validação saem do treino da dobra), blending por regressão logística com pesos estimados nas previsões fora da dobra, normalizados e registrados. Os membros finais são reajustados com todo o treino e salvos em ensemble/; a previsão desse ensemble final sobre o treino é o alvo da destilação. A discordância entre membros é diagnóstico offline, exibido no painel: o ensemble não vai para o navegador, e a discordância também não.
 
 ## Destilação
 
-O estudante (LightGBM profundidade 3, 60 iterações) aprende os alvos suaves calibrados por duplicação ponderada (rótulo 1 com peso p; rótulo 0 com peso 1-p), que reproduz o gradiente esperado sem violar a restrição do wrapper sklearn a rótulos discretos. O tamanho do joblib fica em torno de 60 KB.
+O estudante (LightGBM profundidade 3, 60 iterações) aprende os alvos suaves do ensemble final, sem calibração, por duplicação ponderada (rótulo 1 com peso p; rótulo 0 com peso 1-p), que reproduz o gradiente esperado sem violar a restrição do wrapper sklearn a rótulos discretos. O tamanho do joblib fica em torno de 60 KB.
+
+## Calibração
+
+Ajustada uma única vez, no conjunto de validação, sobre a saída do estudante: Platt com prior em direção à identidade de força 10 em pseudo-observações (com poucas linhas a saída quase não se move; com muitas, os dados decidem), taxa base do rótulo, quantis conformes de Mondrian por série e faixa de histórico com nível 0,90 calculados sobre a probabilidade final (depois do aquecimento), curva de aprendizado por volume de histórico. Resultado em calibracao.json com ECE antes e depois, medidos na validação.
 
 ## Avaliação
 
-Métricas globais (AUC, AP, logloss, Brier), precisão e revocação no Top-10 diário (a capacidade real da coordenação), taxa de alerta e falsos positivos no limiar, subgrupos por série e por faixa de histórico, fairness pela dispersão de revocação e taxa de alerta, estabilidade temporal por mês, comparação com o baseline de regras e gates objetivos. Saída em avaliacao.json, relatorio-avaliacao.md e gates.json.
+Medidas no teste, sobre o preditor publicado: métricas globais (AUC, AP, logloss, Brier, ECE), precisão e revocação no Top-10 diário (a capacidade real da coordenação), taxa de alerta e falsos positivos no limiar, subgrupos por série e por faixa de histórico, fairness pela dispersão de revocação e taxa de alerta, estabilidade temporal por mês, comparação com o baseline de regras, comparação com o LightGBM único da etapa de treino (o ensemble e a destilação precisam superá-lo para justificar a complexidade), conjuntos conformes com cobertura por classe, partida a frio nos alunos reservados e gates objetivos. Ao fim do ciclo, uma run do MLflow com a etiqueta `estagio=publicado` registra o estudante calibrado: parâmetros, métricas de teste e de partida a frio, vereditos dos gates, `modelo.js`, `manifest.json` e relatórios. A run da etapa de treino registra só o modelo de referência. Saída em avaliacao.json, relatorio-avaliacao.md e gates.json.
 
 ## Exportação
 

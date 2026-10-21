@@ -102,7 +102,7 @@ Evite hipóteses que não podem ser refutadas. Evite "vamos testar X" sem proble
 | logloss | qualidade da probabilidade | penaliza confiança errada |
 | Brier | erro da probabilidade | útil para calibração |
 | ECE | calibração | depende de bins e amostra |
-| cobertura conformal | intervalos | grupos pequenos são instáveis |
+| cobertura conformal | conjuntos por classe, medidos no teste | grupos pequenos devolvem {0, 1} |
 | precisão Top-10 | utilidade da lista | depende da capacidade da coordenação |
 | taxa de alerta | custo operacional | alerta demais é inútil |
 | dispersão de recall | fairness | exige amostra mínima |
@@ -147,7 +147,7 @@ O cartão não é marketing. Ele declara o que a versão faz, o que não faz e o
 | Gates aprovados e baseline superado | seguir para pacote e revisão de publicação |
 | AUC baixa | investigar rótulo, volume, vazamento e features |
 | ECE alto | revisar calibração e amostra por grupo |
-| Cobertura conformal baixa | revisar grupos e quantis |
+| Cobertura conformal baixa | revisar grupos, limiares por classe e a trocabilidade entre validação e teste |
 | Taxa de alerta alta | revisar limiar, política e capacidade |
 | Baseline não superado | simplificar ou abandonar a mudança |
 | Fairness com lacuna | investigar e mitigar antes de promover |
@@ -252,6 +252,6 @@ Antes da promoção:
 - purga: intervalo entre splits do tamanho do horizonte.
 - OOF: previsão fora da dobra.
 - ECE: erro esperado de calibração.
-- conformal: intervalo de predição com cobertura mínima.
+- conformal: conjunto de classes plausíveis com cobertura mínima por classe.
 - PSI: índice de estabilidade populacional.
 - histerese: alerta liga após dois dias acima do limiar de entrada e desliga abaixo do limiar de saída.

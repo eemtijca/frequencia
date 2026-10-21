@@ -102,8 +102,9 @@ def _manifesto_final(
     calibracao = dict(params["calibracao"])
     conformal = {
         "nivel": params["conformal"].get("nivel", 0.9),
-        "quantis": params["conformal"]["quantis"],
-        "cobertura_por_grupo": params["conformal"].get("cobertura_por_grupo", {}),
+        "metodo": params["conformal"].get("metodo", ""),
+        "limiares": params["conformal"]["limiares"],
+        "cobertura_teste": params["conformal"].get("cobertura_teste", {}),
     }
     return manifesto_mod.montar(
         identificador=identificador,
@@ -124,6 +125,10 @@ def _manifesto_final(
         arquivos=arquivos,
         min_app_versao=params.get("min_app_versao", "1.4.0"),
         mensagens=params.get("mensagens"),
+        # Os limiares e a confiança do manifesto são os mesmos embutidos no
+        # modelo.js; sem repassá-los, o manifesto gravava os padrões.
+        limiares_alerta=params.get("limiares_alerta"),
+        confianca=params.get("confianca"),
     )
 
 
@@ -205,7 +210,7 @@ function prever(vetor, contexto) {{
     probabilidade: p,
     probabilidade_nucleo: p,
     risco: p >= (limiar.entrada || 0.65) ? 'alto' : (p >= (limiar.saida || 0.45) ? 'medio' : 'baixo'),
-    intervalo_conformal: [Math.max(0, p - 0.2), Math.min(1, p + 0.2)],
+    conjunto_conformal: [0, 1],
     estado_confianca: 'confianca_moderada',
     mensagem: 'Indicador pelo modo de segurança de regras.',
     alerta: {{ em_alerta: emAlerta, dias_acima: diasAcima }},
@@ -235,7 +240,9 @@ Versão do modelo: {versao}
 3. Monte o vetor de features na ordem de `contrato.features`, usando os
    padrões de `contrato.padroes` para valores ausentes.
 4. Chame `prever(vetor, contexto)` e respeite `estado_confianca`,
-   `intervalo_conformal` e `alerta` da saída.
+   `conjunto_conformal` e `alerta` da saída. O conjunto `[1]` indica risco
+   no nível de confiança do manifesto, `[0]` indica ausência de risco e
+   `[0, 1]` indica que o modelo não decide nesse nível.
 5. Se `modelo.js` falhar ao carregar ou o hash divergir, use `fallback.js`
    com a mesma interface.
 6. Rode `dados-teste.json` na inicialização: a saída precisa bater com

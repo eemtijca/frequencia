@@ -31,7 +31,7 @@ O contexto complementa o vetor com o que não é feature:
 | probabilidade_nucleo | fração | Saída bruta do núcleo destilado, para telemetria interna. |
 | probabilidade_calibrada | fração | Saída após Platt, antes do aquecimento. |
 | risco | baixo, medio ou alto | Faixa pelos limiares de entrada e saída. |
-| intervalo_conformal | par de frações | Intervalo do grupo Mondrian do estudante. |
+| conjunto_conformal | lista de classes | `[1]`: risco no nível de confiança do manifesto; `[0]`: ausência de risco; `[0, 1]`: o modelo não decide nesse nível. |
 | estado_confianca | estado | sem_historico, dados_insuficientes, em_observacao, confianca_moderada, confianca_alta ou modelo_desatualizado. |
 | mensagem | texto | Frase aprovada do vocabulário, pronta para exibir. |
 | alerta | objeto | em_alerta e dias_acima após a histerese. |
@@ -46,9 +46,9 @@ A ordem é fixa e idêntica em Python e JavaScript, garantida pelo teste de pari
 2. Núcleo: saída da função transpilada do LightGBM destilado (última posição do vetor de classes).
 3. Platt: p_cal = sigmoide(a * logit(p_nucleo) + b) com (a, b) do manifesto.
 4. Aquecimento: p = peso * p_cal + (1 - peso) * taxa_base, com peso = min(1, historico_dias / 30).
-5. Intervalo conforme: p mais e menos o quantil do grupo (serie por faixa de histórico).
+5. Conjunto conforme: com os limiares do grupo (série por faixa de histórico), a classe 0 entra quando p <= `negativo` e a classe 1 entra quando p >= `positivo`; grupo desconhecido ou conjunto vazio devolve `[0, 1]`.
 6. Estado de confiança a partir de historico_dias, idade do modelo e cobertura de chamada.
-7. Histerese: alerta liga após dois dias acima do limiar de entrada (padrão 0,65) e desliga abaixo do limiar de saída (padrão 0,45).
+7. Histerese: alerta liga após dois dias acima do limiar de entrada e desliga abaixo do limiar de saída. Os dois vêm de `limiares_alerta` no manifesto e são derivados no treino da taxa-alvo de alerta (padrão 10% dos alunos acima da entrada; saída a 70% da entrada), ADR-023.
 
 ## Perfis de dados
 
@@ -56,7 +56,7 @@ O manifesto declara os perfis suportados com confiabilidade esperada. Perfil com
 
 ## Fallback
 
-`fallback.js` expõe a mesma interface `prever(vetor, contexto)` com o escore de regras no lugar do núcleo, o mesmo aquecimento, os mesmos limiares e a mesma saída (com campo fallback verdadeiro e estado confianca_moderada). O app usa quando o modelo.js falha ao carregar, o hash diverge ou a autoverificação dos dados-teste reprova.
+`fallback.js` expõe a mesma interface `prever(vetor, contexto)` com o escore de regras no lugar do núcleo, os mesmos limiares de alerta e a mesma forma de saída, com campo fallback verdadeiro, estado confianca_moderada e `conjunto_conformal` sempre `[0, 1]`: as regras não têm calibração nem garantia conforme, e o fallback não aplica o aquecimento. O app usa quando o modelo.js falha ao carregar, o hash diverge ou a autoverificação dos dados-teste reprova.
 
 ## Casos de teste
 

@@ -17,8 +17,11 @@ GATES_PADRAO = {
     "cobertura_conformal_minima": 0.80,
     "taxa_alerta_maxima": 0.35,
     "melhora_sobre_baseline_minima": 0.0,
+    "lift_alerta_minimo": 2.0,
+    "revocacao_alerta_minima": 0.15,
     "tamanho_pacote_maximo_bytes": 262144,
     "latencia_maxima_ms": 5.0,
+    "ece_maximo_partida_a_frio": 0.15,
 }
 
 K_TOP_PADRAO = 10
@@ -34,9 +37,19 @@ def avaliar(
     dias: list[str] | None = None,
     probabilidades_baseline: np.ndarray | None = None,
     ajuste_calibracao: dict | None = None,
+    conformal: dict | None = None,
+    limiar_alerta: float | None = None,
     k_top: int = K_TOP_PADRAO,
 ) -> dict:
-    """Avaliação completa de uma versão do modelo sobre um conjunto."""
+    """Avaliação completa de uma versão do modelo sobre um conjunto.
+
+    limiar_alerta é o limiar de entrada gravado no pacote; sem ele, vale o
+    padrão de confianca.LIMIARES_ALERTA.
+    """
+    if limiar_alerta is None:
+        from frequencia.features.confianca import LIMIARES_ALERTA
+
+        limiar_alerta = float(LIMIARES_ALERTA["entrada"])
     from sklearn.metrics import (
         average_precision_score,
         brier_score_loss,
@@ -57,16 +70,17 @@ def avaliar(
         "ap": round(float(average_precision_score(y, p)), 4),
         "logloss": round(float(log_loss(y, p, labels=[0, 1])), 4),
         "brier": round(float(brier_score_loss(y, p)), 4),
+        "ece": round(erro_calibracao_esperado(p, y), 4),
     }
     metricas.update(_precisao_top_k(p, y, k_top, dias=dias))
-    metricas.update(_taxa_alerta(p, y))
+    metricas.update(_taxa_alerta(p, y, limiar_alerta))
 
     relatorio: dict = {"metricas": metricas}
 
     if series is not None:
-        relatorio["por_serie"] = _por_grupo(y, p, series, "serie")
+        relatorio["por_serie"] = _por_grupo(y, p, series, "serie", limiar_alerta)
     if turmas is not None and len(set(turmas)) > 1:
-        relatorio["por_turma"] = _por_grupo(y, p, turmas, "turma")
+        relatorio["por_turma"] = _por_grupo(y, p, turmas, "turma", limiar_alerta)
     if historico is not None:
         relatorio["por_faixa_historico"] = _por_faixa_historico(y, p, historico)
     if dias is not None:
@@ -77,15 +91,23 @@ def avaliar(
             "auc_baseline": round(auc_baseline, 4),
             "ganho_absoluto": round(metricas["auc"] - auc_baseline, 4),
         }
+    # O ECE do gate é o do conjunto avaliado; o da calibração fica como
+    # referência, porque foi medido nos dados em que o Platt foi ajustado.
+    relatorio["calibracao"] = {"ece": metricas["ece"]}
     if ajuste_calibracao is not None:
-        cobertura = ajuste_calibracao.get("cobertura_por_grupo", {})
-        relatorio["calibracao"] = {
-            "ece": ajuste_calibracao.get("ece_depois"),
-            "cobertura_minima": (round(min(cobertura.values()), 4) if cobertura else None),
-        }
+        relatorio["calibracao"]["ece_no_ajuste"] = ajuste_calibracao.get("ece_depois")
+    if conformal is not None:
+        relatorio["conformal"] = conformal
     if series is not None:
-        relatorio["fairness"] = _fairness(y, p, series, metricas)
+        relatorio["fairness"] = _fairness(y, p, series, metricas, limiar_alerta)
     return relatorio
+
+
+def erro_calibracao_esperado(probabilidades: np.ndarray, rotulos: np.ndarray, bins: int = 10) -> float:
+    """ECE com bins de igual largura, incluindo p exatamente zero no primeiro."""
+    from frequencia.pipelines.calibracao import _erro_calibracao_esperado
+
+    return _erro_calibracao_esperado(probabilidades, rotulos, bins)
 
 
 def _precisao_top_k(p: np.ndarray, y: np.ndarray, k: int, dias: list[str] | None = None) -> dict:
@@ -114,20 +136,32 @@ def _precisao_top_k(p: np.ndarray, y: np.ndarray, k: int, dias: list[str] | None
     }
 
 
-def _taxa_alerta(p: np.ndarray, y: np.ndarray, limiar: float = 0.65) -> dict:
-    """Taxa de alerta, falsos positivos e negativos no limiar de entrada."""
+def _taxa_alerta(p: np.ndarray, y: np.ndarray, limiar: float) -> dict:
+    """Taxa, precisão, revocação e lift no limiar de entrada do alerta.
+
+    Mede a linha acima do limiar, antes da histerese de dois dias. O lift é
+    a precisão dividida pela prevalência: quantas vezes um aluno sinalizado
+    é mais provável de ter o desfecho do que um aluno qualquer.
+    """
     alerta = p >= limiar
     fp = int((alerta & (y == 0)).sum())
     fn = int((~alerta & (y == 1)).sum())
+    vp = int((alerta & (y == 1)).sum())
+    prevalencia = float(y.mean()) if len(y) else 0.0
+    precisao = vp / int(alerta.sum()) if alerta.any() else None
     return {
+        "limiar_alerta": round(float(limiar), 4),
         "taxa_alerta": round(float(alerta.mean()), 4),
+        "precisao_alerta": round(precisao, 4) if precisao is not None else None,
+        "revocacao_alerta": round(vp / max(1, int(y.sum())), 4),
+        "lift_alerta": round(precisao / prevalencia, 4) if precisao is not None and prevalencia > 0 else None,
         "falsos_positivos": fp,
         "falsos_negativos": fn,
         "alertas_por_dia_estimado": round(float(alerta.mean() * 100), 2),
     }
 
 
-def _por_grupo(y, p, grupos: list[str], rotulo: str) -> list[dict]:
+def _por_grupo(y, p, grupos: list[str], rotulo: str, limiar: float) -> list[dict]:
     """Métricas por grupo, com proteção contra grupos sem as duas classes."""
     from sklearn.metrics import roc_auc_score
 
@@ -143,9 +177,9 @@ def _por_grupo(y, p, grupos: list[str], rotulo: str) -> list[dict]:
         }
         if len(np.unique(y[mascara])) == 2:
             parciais["auc"] = round(float(roc_auc_score(y[mascara], p[mascara])), 4)
-            parciais["taxa_alerta"] = round(float((p[mascara] >= 0.65).mean()), 4)
+            parciais["taxa_alerta"] = round(float((p[mascara] >= limiar).mean()), 4)
             parciais["revocacao"] = round(
-                float(((p[mascara] >= 0.65) & (y[mascara] == 1)).sum() / max(1, int(y[mascara].sum()))),
+                float(((p[mascara] >= limiar) & (y[mascara] == 1)).sum() / max(1, int(y[mascara].sum()))),
                 4,
             )
         saida.append(parciais)
@@ -192,7 +226,7 @@ def _por_periodo(y, p, dias: list[str]) -> list[dict]:
     return saida
 
 
-def _fairness(y, p, series: list[str], metricas: dict) -> dict:
+def _fairness(y, p, series: list[str], metricas: dict, limiar: float) -> dict:
     """Fairness básico: dispersão de revocação e de taxa de alerta."""
     revocacoes = []
     taxas = []
@@ -200,7 +234,7 @@ def _fairness(y, p, series: list[str], metricas: dict) -> dict:
         mascara = np.asarray([g == nome for g in series])
         if mascara.sum() < 20 or y[mascara].sum() == 0:
             continue
-        alerta = p[mascara] >= 0.65
+        alerta = p[mascara] >= limiar
         revocacoes.append(float((alerta & (y[mascara] == 1)).sum() / max(1, int(y[mascara].sum()))))
         taxas.append(float(alerta.mean()))
     if len(revocacoes) < 2:
@@ -212,6 +246,14 @@ def _fairness(y, p, series: list[str], metricas: dict) -> dict:
     }
 
 
+def _no_maximo(valor, limite) -> bool:
+    return valor is not None and float(valor) <= float(limite)
+
+
+def _no_minimo(valor, limite) -> bool:
+    return valor is not None and float(valor) >= float(limite)
+
+
 def validar_gates(
     relatorio: dict,
     *,
@@ -219,29 +261,52 @@ def validar_gates(
     latencia_ms: float | None = None,
     gates: dict | None = None,
 ) -> dict:
-    """Aplica os gates mínimos de promoção e devolve o veredito por gate."""
+    """Aplica os gates mínimos de promoção e devolve o veredito por gate.
+
+    Todo gate reprova quando a medida está ausente: valor faltando é falha
+    do ciclo, não aprovação. Tamanho e latência só entram quando informados.
+    """
     limiares = dict(GATES_PADRAO)
     if gates:
         limiares.update(gates)
     metricas = relatorio.get("metricas", {})
     comparacao = relatorio.get("comparacao_baseline", {})
     calibracao = relatorio.get("calibracao", {})
+    conformal = relatorio.get("conformal", {})
     vereditos = {
-        "auc": metricas.get("auc", 0.0) >= limiares["auc_minimo"],
-        "ece": (calibracao.get("ece") or 0.0) <= limiares["ece_maximo"],
-        "cobertura_conformal": (calibracao.get("cobertura_minima") or 1.0)
-        >= limiares["cobertura_conformal_minima"],
-        "taxa_alerta": metricas.get("taxa_alerta", 1.0) <= limiares["taxa_alerta_maxima"],
-        "melhora_sobre_baseline": comparacao.get("ganho_absoluto", 0.0)
-        >= limiares["melhora_sobre_baseline_minima"],
+        "auc": _no_minimo(metricas.get("auc"), limiares["auc_minimo"]),
+        "ece": _no_maximo(calibracao.get("ece"), limiares["ece_maximo"]),
+        "cobertura_conformal": _no_minimo(
+            conformal.get("cobertura_minima_por_classe"), limiares["cobertura_conformal_minima"]
+        ),
+        "taxa_alerta": _no_maximo(metricas.get("taxa_alerta"), limiares["taxa_alerta_maxima"]),
+        "melhora_sobre_baseline": _no_minimo(
+            comparacao.get("ganho_absoluto"), limiares["melhora_sobre_baseline_minima"]
+        ),
+        "lift_alerta": _no_minimo(metricas.get("lift_alerta"), limiares["lift_alerta_minimo"]),
+        "revocacao_alerta": _no_minimo(metricas.get("revocacao_alerta"), limiares["revocacao_alerta_minima"]),
     }
     if tamanho_pacote_bytes is not None:
-        vereditos["tamanho_pacote"] = tamanho_pacote_bytes <= limiares["tamanho_pacote_maximo_bytes"]
+        vereditos["tamanho_pacote"] = _no_maximo(
+            tamanho_pacote_bytes, limiares["tamanho_pacote_maximo_bytes"]
+        )
     if latencia_ms is not None:
-        vereditos["latencia"] = latencia_ms <= limiares["latencia_maxima_ms"]
+        vereditos["latencia"] = _no_maximo(latencia_ms, limiares["latencia_maxima_ms"])
+    # A partida a frio depende de alunos reservados em quantidade suficiente.
+    # Quando não há, o gate fica explicitamente não avaliado, nunca aprovado
+    # em silêncio, e a pendência aparece no veredito para a revisão humana.
+    nao_avaliados: dict[str, str] = {}
+    frio = relatorio.get("partida_a_frio") or {}
+    if frio.get("avaliado"):
+        vereditos["ece_partida_a_frio"] = _no_maximo(
+            (frio.get("calibracao") or {}).get("ece"), limiares["ece_maximo_partida_a_frio"]
+        )
+    else:
+        nao_avaliados["ece_partida_a_frio"] = frio.get("motivo", "relatório sem avaliação de partida a frio")
     return {
         "gates": limiares,
         "vereditos": vereditos,
+        "nao_avaliados": nao_avaliados,
         "aprovado": all(vereditos.values()),
     }
 
@@ -261,8 +326,11 @@ def gerar_relatorio_markdown(relatorio: dict, destino) -> str:
         "por_faixa_historico",
         "estabilidade_temporal",
         "comparacao_baseline",
+        "comparacao_referencia",
         "calibracao",
+        "conformal",
         "fairness",
+        "partida_a_frio",
     ):
         corpo = relatorio.get(secao)
         if not corpo:
