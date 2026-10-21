@@ -24,14 +24,21 @@ def renderizar() -> None:
     st.subheader("Limites de gates de promoção")
     from frequencia.pipelines.avaliacao import GATES_PADRAO
 
-    tabela = [
-        {"gate": "AUC mínimo", "valor": GATES_PADRAO["auc_minimo"]},
-        {"gate": "ECE máximo", "valor": GATES_PADRAO["ece_maximo"]},
-        {"gate": "Cobertura conforme mínima", "valor": GATES_PADRAO["cobertura_conformal_minima"]},
-        {"gate": "Taxa de alerta máxima", "valor": GATES_PADRAO["taxa_alerta_maxima"]},
-        {"gate": "Tamanho do pacote (bytes)", "valor": GATES_PADRAO["tamanho_pacote_maximo_bytes"]},
-        {"gate": "Latência máxima (ms)", "valor": GATES_PADRAO["latencia_maxima_ms"]},
-    ]
+    nomes = {
+        "auc_minimo": "AUC mínimo no teste",
+        "ece_maximo": "ECE máximo no teste",
+        "cobertura_conformal_minima": "Cobertura conforme mínima por classe",
+        "taxa_alerta_maxima": "Taxa de alerta máxima",
+        "melhora_sobre_baseline_minima": "Ganho mínimo de AUC sobre o baseline",
+        "lift_alerta_minimo": "Lift mínimo do alerta",
+        "revocacao_alerta_minima": "Revocação mínima do alerta",
+        "tamanho_pacote_maximo_bytes": "Tamanho do pacote (bytes)",
+        "latencia_maxima_ms": "Latência máxima (ms)",
+        "ece_maximo_partida_a_frio": "ECE máximo na partida a frio",
+    }
+    # A tabela percorre todos os gates do motor: gate novo aparece aqui sem
+    # depender de alguém lembrar de acrescentá-lo à página.
+    tabela = [{"gate": nomes.get(chave, chave), "valor": valor} for chave, valor in GATES_PADRAO.items()]
     st.dataframe(tabela, use_container_width=True, hide_index=True)
     st.caption("Alterações de gates exigem ADR e vão pela CLI, não por aqui.")
 

@@ -671,7 +671,10 @@ def _cartao_modelo(params: dict, relatorio: dict, pacote_dataset: dict) -> str:
         f"- Linhas: {params.get('dataset', {}).get('linhas', 'n/d')}",
         f"- Taxa do rótulo: {params.get('dataset', {}).get('taxa_rotulo', 'n/d')}",
         "",
-        "## Métricas de validação",
+        "## Métricas no teste",
+        "",
+        "Medidas no conjunto de teste, sobre o preditor publicado: estudante,",
+        "calibração e aquecimento, exatamente como o modelo.js responde.",
         "",
         "| Métrica | Valor |",
         "| --- | --- |",
@@ -685,6 +688,9 @@ def _cartao_modelo(params: dict, relatorio: dict, pacote_dataset: dict) -> str:
             "",
             f"- Platt regularizado: a={params['calibracao']['a_platt']}, b={params['calibracao']['b_platt']}",
             f"- Taxa base de aquecimento: {params['calibracao']['taxa_base']}",
+            f"- Alerta: entrada {params['limiares_alerta']['entrada']} e saída "
+            f"{params['limiares_alerta']['saida']}, derivadas de uma taxa-alvo de "
+            f"{params['limiares_alerta'].get('taxa_alvo', 'n/d')} (fração dos alunos acima da entrada)",
             "- Conjuntos de predição conformes Mondrian por série, faixa de histórico e classe, "
             f"nível {params['conformal']['nivel']}",
             "- Estados de confiança, aquecimento de 30 dias e histerese de alerta embutidos no pacote",

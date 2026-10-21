@@ -110,7 +110,11 @@ def custo_operacional(ctx: typer.Context, pasta_experimento: Path = typer.Argume
     try:
         corpo = _avaliacao(pasta_experimento)["metricas"]
         saida = {
+            "limiar_alerta": corpo.get("limiar_alerta"),
             "taxa_alerta": corpo.get("taxa_alerta"),
+            "precisao_alerta": corpo.get("precisao_alerta"),
+            "revocacao_alerta": corpo.get("revocacao_alerta"),
+            "lift_alerta": corpo.get("lift_alerta"),
             "alertas_por_dia_estimado": corpo.get("alertas_por_dia_estimado"),
             "falsos_positivos": corpo.get("falsos_positivos"),
             "precisao_top_10_diario": corpo.get("precisao_top_10_diario"),

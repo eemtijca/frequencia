@@ -50,6 +50,7 @@ def criar(
             "min_app_versao": parametros.get("min_app_versao", "1.4.0"),
             "tentativas_optuna": parametros.get("tentativas_optuna", 0),
             "dobras_ensemble": parametros.get("dobras_ensemble", 3),
+            "taxa_alerta_alvo": parametros.get("taxa_alerta_alvo", 0.10),
         }
         with (destino / "config.json").open("w", encoding="utf-8") as saida:
             json.dump(corpo, saida, ensure_ascii=False, indent=2, sort_keys=True)
