@@ -3,8 +3,9 @@
 
 O registro vive em var/estado/registro.json com gravação atômica e auditoria
 em acréscimo. Estados: experimental, candidato, homologado, publicado,
-descontinuado, arquivado. Promoção a homologado ou publicado exige papel de
-aprovador (verificado pela camada de chamada).
+descontinuado, arquivado. Os requisitos de promoção são verificados aqui, no
+motor: candidato exige gates aprovados; homologado e publicado exigem papel
+de aprovador e aprovação registrada vigente (ADR-018).
 """
 
 from __future__ import annotations
@@ -35,6 +36,15 @@ def promover_modelo(
         papel=papel,
         justificativa=justificativa,
     )
+
+
+def requisitos_promocao(identificador: str, versao: str, novo_estado: str) -> dict[str, bool]:
+    """Checklist objetivo da promoção, o mesmo que o motor aplica."""
+    corpo = estado_infra.ler_registro().get("modelos", {}).get(identificador, {})
+    detalhe = corpo.get("versoes", {}).get(versao)
+    if detalhe is None:
+        return {"versão registrada": False}
+    return estado_infra.requisitos_promocao(detalhe, novo_estado)
 
 
 def aprovar_modelo(

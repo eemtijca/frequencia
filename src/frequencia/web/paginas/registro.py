@@ -41,13 +41,15 @@ def renderizar() -> None:
         ["candidato", "homologado", "publicado", "descontinuado", "arquivado"],
     )
     detalhe = registro["versoes"].get(versao, {})
-    _atual = detalhe.get("situacao")
+
+    # O checklist vem do motor: o painel exibe os mesmos requisitos que a
+    # promoção aplica, sem cálculo próprio.
+    from frequencia.modelos import registro as registro_mod
 
     st.markdown("**Checklist antes da promoção**")
     checklist = {
-        "Gates de métricas aprovados": detalhe.get("metricas", {}).get("auc", 0) >= 0.7,
+        **registro_mod.requisitos_promocao("risco-infrequencia", versao, alvo_estado),
         "Limitações documentadas": bool(detalhe.get("limitacoes")),
-        "Validade dentro do prazo": True,
     }
     for item, ok in checklist.items():
         st.checkbox(item, value=ok, disabled=True)

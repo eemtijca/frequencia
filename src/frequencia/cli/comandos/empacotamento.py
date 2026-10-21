@@ -10,6 +10,7 @@ import typer
 
 from frequencia.cli import contexto as contexto_mod
 from frequencia.cli.contexto import Contexto
+from frequencia.infra.erros import ErroPermissao
 
 app = typer.Typer(no_args_is_help=True, help="Montagem e validação do pacote de distribuição.")
 
@@ -149,7 +150,7 @@ def publicacao_cmd(
     try:
         if contexto.papel != "aprovador":
             msg = "Publicação exige o papel de aprovador. Use --papel aprovador."
-            raise PermissionError(msg)
+            raise ErroPermissao(msg)
         resultado = publicacao.publicar(
             pacote, versao_modelo=versao, notas=notas, ator=contexto.ator, papel=contexto.papel
         )

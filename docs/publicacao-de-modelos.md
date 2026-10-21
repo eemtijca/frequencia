@@ -18,6 +18,8 @@ Uma versão só anda para frente com todos os gates aprovados. Os limites vivem 
 
 O comando `avaliacao validar-gates` aplica os gates com o tamanho e a latência medidos da exportação, e o resultado fica gravado em gates.json do experimento.
 
+O veredito também é gravado na versão do registro, e o motor recusa a promoção quando falta requisito: candidato exige gates aprovados; homologado e publicado exigem ainda aprovação registrada vigente, em que a decisão mais recente sobre a versão é aprovação (ADR-018). Descontinuar e arquivar nunca ficam bloqueados.
+
 Os gates respondem "podemos?". A revisão científica responde "devemos?". Mudanças estruturais precisam das duas; o método está em [ciencia-e-inovacao.md](ciencia-e-inovacao.md).
 
 ## Fluxo de promoção
@@ -87,9 +89,9 @@ No painel web, o mesmo fluxo mora na página Registro e promoção (com checklis
 
 ## Checklist de publicação
 
-1. Gates aprovados e gravados no experimento.
-2. Aprovação registrada (comando registro aprovar ou página do painel).
-3. Integridade do pacote conferida (hashes do manifesto).
+1. Gates aprovados e gravados no experimento e no registro (verificado pelo motor).
+2. Aprovação registrada e não revogada por rejeição posterior (verificado pelo motor).
+3. Integridade do pacote conferida (hashes do manifesto e hash do `modelo.js` igual ao registrado, verificado pelo motor).
 4. Compatibilidade com a versão mínima do app confirmada.
 5. Dados-teste rodando no Node com divergência zero.
 6. Notas de mudança escritas para a coordenação em português claro.

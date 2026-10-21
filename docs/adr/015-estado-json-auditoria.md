@@ -2,7 +2,7 @@
 
 ## Estado
 
-Aceita.
+Aceita. Complementada pela ADR-018 (trava do registro e requisitos de promoção).
 
 ## Contexto
 
