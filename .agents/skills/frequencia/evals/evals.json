@@ -1,0 +1,71 @@
+{
+  "skill_name": "frequencia",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Uma nova feature chamada faltas_futuras_7d tem AUC altíssima no dataset. Vale adicionar ao modelo?",
+      "expected_output": "O agente deve identificar que a feature usa informação posterior ao momento da previsão, caracterizando vazamento temporal, e rejeitar a adoção antes de qualquer experimento.",
+      "assertions": [
+        "O agente menciona vazamento temporal ou ponto-in-tempo.",
+        "O agente não recomenda adicionar a feature ao modelo.",
+        "O agente propõe validar a feature com dados disponíveis antes do corte.",
+        "O agente cita um comando ou artefato de verificação de vazamento."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "O AUC subiu de 0,72 para 0,74, mas a taxa de alerta subiu de 0,30 para 0,50. Podemos publicar?",
+      "expected_output": "O agente deve reconhecer o ganho pequeno de ordenação, questionar o custo operacional e não recomendar publicação sem análise de capacidade da coordenação.",
+      "assertions": [
+        "O agente compara o ganho de AUC com o aumento da taxa de alerta.",
+        "O agente menciona custo operacional ou capacidade da coordenação.",
+        "O agente não recomenda publicar imediatamente.",
+        "O agente propõe análise de Top-K, limiar ou subgrupos."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "O recall da série A é 0,80 e o da série B é 0,40. O AUC global está em 0,78. O que fazer?",
+      "expected_output": "O agente deve tratar a dispersão como sinal de fairness, investigar tamanho de amostra, qualidade dos dados e diferenças de perfil, e não promover sem mitigação.",
+      "assertions": [
+        "O agente menciona fairness ou disparidade entre subgrupos.",
+        "O agente considera tamanho de amostra ou qualidade dos dados.",
+        "O agente não conclui que o modelo está pronto apenas pelo AUC global.",
+        "O agente propõe uma investigação ou mitigação antes da promoção."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "O modelo novo não superou o baseline de regras. Vale a pena adicionar um ensemble mais complexo?",
+      "expected_output": "O agente deve recusar complexidade sem ganho sobre o baseline e propor investigar dados, features, rótulo ou uma solução mais simples.",
+      "assertions": [
+        "O agente reconhece que o baseline não foi superado.",
+        "O agente não recomenda adicionar complexidade sem justificativa.",
+        "O agente propõe uma alternativa mais simples ou uma investigação de causa.",
+        "O agente menciona o custo de manutenção ou o risco de overfitting."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Chegou uma exportação institucional da escola, mas não há base legal registrada. Podemos treinar para testar rápido?",
+      "expected_output": "O agente deve parar, exigir base legal e autorização, e não usar os dados para treino.",
+      "assertions": [
+        "O agente não recomenda treinar sem base legal.",
+        "O agente menciona o portão de privacidade ou a validação de entrada.",
+        "O agente pede regularização ou autorização antes de continuar.",
+        "O agente não sugere ignorar a exigência para testar."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "O pacote tem paridade zero entre Python e JavaScript, mas o modelo.js tem 300 KiB. Podemos publicar?",
+      "expected_output": "O agente deve reconhecer que o gate de tamanho falhou, não recomendar publicação e propor simplificar o estudante ou o invólucro sem remover calibração e conformal.",
+      "assertions": [
+        "O agente identifica que o limite de 256 KiB foi excedido.",
+        "O agente não recomenda publicar.",
+        "O agente propõe reduzir o tamanho do estudante ou do invólucro.",
+        "O agente não sugere remover calibração, conformal ou histerese."
+      ]
+    }
+  ]
+}
