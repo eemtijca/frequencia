@@ -53,3 +53,4 @@
 | [021](adr/021-conjuntos-conformes.md) | Conjuntos de predição conformes por classe no lugar do intervalo. |
 | [022](adr/022-partida-a-frio.md) | Alunos reservados para avaliar a partida a frio. |
 | [023](adr/023-limiar-de-alerta-por-taxa-alvo.md) | Limiar de alerta derivado da taxa-alvo. |
+| [024](adr/024-excecoes-de-lint-e-tipos.md) | Exceções de lint e nível de verificação de tipos. |

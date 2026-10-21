@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -247,7 +248,7 @@ def _registrar_mlflow_publicado(
     )
 
 
-def _executar_treino(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, detalhado: bool):
+def _executar_treino(config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, detalhado: bool) -> dict:
     resultado = treino_mod.treinar(
         ConfigTreino(
             pasta_dataset=config.pasta_dataset,
@@ -274,7 +275,7 @@ def _horizonte(pacote_dataset: dict) -> int:
 
 def _executar_ensemble(
     config: ConfigExperimento, pasta: Path, dados: pl.DataFrame, horizonte: int, detalhado: bool
-):
+) -> dict:
     resultado = ensemble_mod.montar(
         pasta,
         dados,
@@ -457,7 +458,7 @@ def _comparar_referencia(pasta: Path, x_teste: np.ndarray, y_teste: np.ndarray, 
     }
 
 
-def _avaliar_partida_a_frio(dados: pl.DataFrame, estudante, ajuste: dict) -> dict:
+def _avaliar_partida_a_frio(dados: pl.DataFrame, estudante: Any, ajuste: dict) -> dict:
     """Avalia os alunos reservados nos primeiros dias de histórico.
 
     Mede o aquecimento e os grupos de histórico curto, que o teste temporal
@@ -808,7 +809,7 @@ def _cartao_modelo(params: dict, relatorio: dict, pacote_dataset: dict) -> str:
 class _NucleoEstudante:
     """Adaptador do estudante para o paralelo com o JS."""
 
-    def __init__(self, estudante) -> None:
+    def __init__(self, estudante: Any) -> None:
         self._estudante = estudante
 
     def predict(self, entrada: list[list[float]]) -> list[float]:
@@ -871,7 +872,7 @@ class _Execucao:
         self._caminho = caminho
         self._refazer = False
 
-    def rodar(self, nome: str, acao):
+    def rodar(self, nome: str, acao: Callable[[], Any]) -> Any:
         info = self._estado.get("etapas", {}).get(nome)
         concluida = bool(info) and info.get("estado") == "concluida"
         if concluida and not self._refazer:
@@ -897,7 +898,7 @@ def _serializavel(valor: Any) -> Any:
     return str(valor)
 
 
-def _concluir_etapa(estado: dict, caminho: Path, nome: str, resultado) -> None:
+def _concluir_etapa(estado: dict, caminho: Path, nome: str, resultado: Any) -> None:
     estado.setdefault("etapas", {})[nome] = {
         "estado": "concluida",
         "momento": time.strftime("%Y-%m-%dT%H:%M:%S"),

@@ -210,9 +210,9 @@ class MembroCurto:
     def __init__(self, semente: int, indices: list[int]) -> None:
         self._indices = indices
         self._semente = semente
-        self._modelo = None
+        self._modelo: Any = None
 
-    def fit(self, x, y):
+    def fit(self, x: np.ndarray, y: np.ndarray) -> MembroCurto:
         import lightgbm as lgb
 
         self._modelo = lgb.LGBMClassifier(
@@ -226,7 +226,7 @@ class MembroCurto:
         self._modelo.fit(x[:, self._indices], y)
         return self
 
-    def predict_proba(self, x):
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
         return self._modelo.predict_proba(x[:, self._indices])
 
 

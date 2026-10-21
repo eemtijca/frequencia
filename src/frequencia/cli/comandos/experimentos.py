@@ -5,7 +5,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import polars as pl
 
 import typer
 
@@ -274,7 +277,7 @@ def relatorio(ctx: typer.Context, pasta_experimento: Path = typer.Argument(...))
         contexto_mod.falha(contexto, exc)
 
 
-def _dataset_do_experimento(pasta: Path):
+def _dataset_do_experimento(pasta: Path) -> pl.DataFrame:
     """Localiza o dataset usado por um experimento a partir do estado."""
     return _pacote_do_experimento(pasta)["dataset"]
 

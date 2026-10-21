@@ -190,7 +190,7 @@ def _vencida(validade: str | None) -> bool:
     return datetime.now(UTC) > alvo
 
 
-def _dataset_do_experimento(pasta: Path):
+def _dataset_do_experimento(pasta: Path) -> pl.DataFrame:
     from frequencia.pipelines import dataset as dataset_mod
 
     alvo = Path(pasta) / "estado.json"

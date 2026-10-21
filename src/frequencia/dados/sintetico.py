@@ -16,7 +16,10 @@ import json
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    import polars as pl
 
 import numpy as np
 
@@ -431,7 +434,7 @@ def gerar(
         chave = linha.pop("chave_chamada")
         linha["frequencia_id"] = mapa_chamadas[chave]
 
-    def _normalizar(dados_pl):
+    def _normalizar(dados_pl: pl.DataFrame) -> pl.DataFrame:
         # Colunas inteiramente nulas nascem com dtype Null; converte para Utf8.
         ajustes = [pl.col(nome).cast(pl.Utf8) for nome, tipo in dados_pl.schema.items() if tipo == pl.Null]
         return dados_pl.with_columns(ajustes) if ajustes else dados_pl
@@ -679,7 +682,7 @@ def _dias_ate_feriado(dia: date) -> int:
 def _gravar_pacote(
     destino: Path,
     tabelas: dict,
-    verdade_oculta,
+    verdade_oculta: pl.DataFrame,
     meta: dict,
 ) -> None:
     """Grava o pacote em CSV com metadados e hashes por arquivo."""

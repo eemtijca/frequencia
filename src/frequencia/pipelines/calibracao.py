@@ -91,7 +91,7 @@ def ajustar_platt(
     z = _logit(np.asarray(probabilidades, dtype=float))
     y = np.asarray(rotulos, dtype=float)
 
-    def objetivo(theta):
+    def objetivo(theta: np.ndarray) -> float:
         a, b = theta
         escore = a * z + b
         # Perda logística estável.

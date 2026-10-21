@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
 from frequencia.infra.erros import ErroContrato
@@ -173,10 +174,8 @@ def validar(manifesto: dict) -> None:
         raise ErroContrato(msg) from exc
 
 
-def gravar(manifesto: dict, destino) -> None:
+def gravar(manifesto: dict, destino: str | Path) -> None:
     """Grava o manifesto em JSON com ordenação estável."""
-    from pathlib import Path
-
     alvo = Path(destino)
     alvo.parent.mkdir(parents=True, exist_ok=True)
     with alvo.open("w", encoding="utf-8") as saida:
@@ -184,10 +183,8 @@ def gravar(manifesto: dict, destino) -> None:
         saida.write("\n")
 
 
-def carregar(origem) -> dict:
+def carregar(origem: str | Path) -> dict:
     """Lê e valida um manifesto gravado."""
-    from pathlib import Path
-
     alvo = Path(origem)
     if not alvo.is_file():
         msg = f"Manifesto não encontrado: {alvo}."

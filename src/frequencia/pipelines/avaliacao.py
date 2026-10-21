@@ -9,6 +9,8 @@ Os gates mínimos decidem se a versão pode seguir para candidata.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 GATES_PADRAO = {
@@ -161,7 +163,7 @@ def _taxa_alerta(p: np.ndarray, y: np.ndarray, limiar: float) -> dict:
     }
 
 
-def _por_grupo(y, p, grupos: list[str], rotulo: str, limiar: float) -> list[dict]:
+def _por_grupo(y: np.ndarray, p: np.ndarray, grupos: list[str], rotulo: str, limiar: float) -> list[dict]:
     """Métricas por grupo, com proteção contra grupos sem as duas classes."""
     from sklearn.metrics import roc_auc_score
 
@@ -186,7 +188,7 @@ def _por_grupo(y, p, grupos: list[str], rotulo: str, limiar: float) -> list[dict
     return saida
 
 
-def _por_faixa_historico(y, p, historico: np.ndarray) -> list[dict]:
+def _por_faixa_historico(y: np.ndarray, p: np.ndarray, historico: np.ndarray) -> list[dict]:
     """Desempenho por quantidade de histórico acumulado."""
     faixas = ((0, 20), (20, 40), (40, 70), (70, 10**6))
     from sklearn.metrics import roc_auc_score
@@ -206,7 +208,7 @@ def _por_faixa_historico(y, p, historico: np.ndarray) -> list[dict]:
     return saida
 
 
-def _por_periodo(y, p, dias: list[str]) -> list[dict]:
+def _por_periodo(y: np.ndarray, p: np.ndarray, dias: list[str]) -> list[dict]:
     """Estabilidade temporal: AUC por mês de referência."""
     from sklearn.metrics import roc_auc_score
 
@@ -226,7 +228,7 @@ def _por_periodo(y, p, dias: list[str]) -> list[dict]:
     return saida
 
 
-def _fairness(y, p, series: list[str], metricas: dict, limiar: float) -> dict:
+def _fairness(y: np.ndarray, p: np.ndarray, series: list[str], metricas: dict, limiar: float) -> dict:
     """Fairness básico: dispersão de revocação e de taxa de alerta."""
     revocacoes = []
     taxas = []
@@ -246,11 +248,11 @@ def _fairness(y, p, series: list[str], metricas: dict, limiar: float) -> dict:
     }
 
 
-def _no_maximo(valor, limite) -> bool:
+def _no_maximo(valor: float | None, limite: float) -> bool:
     return valor is not None and float(valor) <= float(limite)
 
 
-def _no_minimo(valor, limite) -> bool:
+def _no_minimo(valor: float | None, limite: float) -> bool:
     return valor is not None and float(valor) >= float(limite)
 
 
@@ -311,7 +313,7 @@ def validar_gates(
     }
 
 
-def gerar_relatorio_markdown(relatorio: dict, destino) -> str:
+def gerar_relatorio_markdown(relatorio: dict, destino: str | Path | None) -> str:
     """Renderiza o relatório de avaliação em Markdown legível."""
     linhas = ["# Relatório de avaliação", ""]
     metricas = relatorio.get("metricas", {})
@@ -349,8 +351,6 @@ def gerar_relatorio_markdown(relatorio: dict, destino) -> str:
                 linhas.append(f"- {chave}: {valor}")
     texto = "\n".join(linhas) + "\n"
     if destino is not None:
-        from pathlib import Path
-
         alvo = Path(destino)
         alvo.parent.mkdir(parents=True, exist_ok=True)
         alvo.write_text(texto, encoding="utf-8")

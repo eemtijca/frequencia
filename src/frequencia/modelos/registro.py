@@ -10,10 +10,12 @@ de aprovador e aprovação registrada vigente (ADR-018).
 
 from __future__ import annotations
 
+from typing import Any
+
 from frequencia.infra import estado as estado_infra
 
 
-def registrar_modelo(*args, **kwargs):
+def registrar_modelo(*args: Any, **kwargs: Any) -> dict[str, Any]:
     """Registra uma versão nova no registro de modelos."""
     return estado_infra.registrar_modelo(*args, **kwargs)
 
@@ -26,7 +28,7 @@ def promover_modelo(
     ator: str = "cli",
     papel: str = "aprovador",
     justificativa: str = "",
-):
+) -> dict[str, Any]:
     """Promove uma versão entre estados com validação de transição."""
     return estado_infra.promover_modelo(
         identificador,
@@ -49,12 +51,12 @@ def requisitos_promocao(identificador: str, versao: str, novo_estado: str) -> di
 
 def aprovar_modelo(
     identificador: str, versao: str, aprovado: bool, *, ator: str = "cli", comentario: str = ""
-):
+) -> dict[str, Any]:
     """Registra aprovação ou rejeição da versão."""
     return estado_infra.aprovar_modelo(identificador, versao, aprovado, ator=ator, comentario=comentario)
 
 
-def descontinuar(identificador: str, versao: str, *, ator: str = "cli", motivo: str = ""):
+def descontinuar(identificador: str, versao: str, *, ator: str = "cli", motivo: str = "") -> dict[str, Any]:
     """Descontinua uma versão publicada, com motivo auditado."""
     return estado_infra.promover_modelo(
         identificador,
