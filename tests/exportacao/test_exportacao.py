@@ -143,29 +143,44 @@ def test_nenhuma_pessoa_nos_artefatos(experimento_completo: Path) -> None:
 
 
 def test_limiar_e_histerese_no_pacote(experimento_completo: Path) -> None:
-    """O modelo.js aplica histerese: dois dias altos ligam o alerta."""
+    """A histerese do modelo.js bate com a do Python numa sequência encadeada.
+
+    Os casos de teste são aplicados como dias seguidos de um mesmo estudante,
+    passando o estado do alerta de um dia para o outro nas duas linguagens.
+    """
     if not _node_disponivel():
         pytest.skip("Node indisponível neste ambiente.")
+    import joblib
+
+    from frequencia.pipelines import exportacao
+    from frequencia.pipelines.experimento import _NucleoEstudante
+
+    estado = json.loads((experimento_completo / "estado.json").read_text(encoding="utf-8"))
+    params = estado["etapas"]["exportacao"]["resultado"]["params"]
     empacotamento = json.loads((experimento_completo / "empacotamento.json").read_text(encoding="utf-8"))
     pasta = Path(empacotamento["pasta"])
-    dados = json.loads((pasta / "dados-teste.json").read_text(encoding="utf-8"))
-    caso = dados["casos"][0]
-    vetor = caso["vetor"]
-    # Força probabilidade alta dobrando as faltas recentes.
-    from frequencia.features.catalogo import NOMES_FEATURES
+    casos = json.loads((pasta / "dados-teste.json").read_text(encoding="utf-8"))["casos"]
+    vetores = [caso["vetor"] for caso in casos]
+    # Repete cada vetor para dar à histerese dias consecutivos iguais.
+    sequencia = [vetor for vetor in vetores for _ in range(3)]
 
-    vetor_alto = list(vetor)
-    vetor_alto[NOMES_FEATURES.index("faltas_7d")] = 7.0
-    vetor_alto[NOMES_FEATURES.index("faltas_consecutivas")] = 7.0
+    nucleo = _NucleoEstudante(joblib.load(experimento_completo / "estudante.joblib"))
+    anterior = None
+    esperados = []
+    for vetor in sequencia:
+        saida = exportacao.prever_em_python(
+            vetor, {"serie": "ser_alfa_1", "estado_alerta": anterior}, nucleo, params
+        )
+        anterior = {"em_alerta": saida["alerta"]["em_alerta"], "dias_acima": saida["alerta"]["dias_acima"]}
+        esperados.append([saida["alerta"]["em_alerta"], saida["alerta"]["dias_acima"]])
+
     roteiro = (
         "const m = require(" + json.dumps(str(pasta / "modelo.js")) + ");\n"
-        "let s = null;\n"
-        "const r1 = m.prever(" + json.dumps(vetor_alto) + ", "
-        "{serie: 'ser_alfa_1', estado_alerta: s});\n"
-        "const r2 = m.prever(" + json.dumps(vetor_alto) + ", "
-        "{serie: 'ser_alfa_1', estado_alerta: r1.alerta});\n"
-        "console.log(JSON.stringify({p1: r1.probabilidade, "
-        "a1: r1.alerta.em_alerta, a2: r2.alerta.em_alerta}));\n"
+        "const seq = " + json.dumps(sequencia) + ";\n"
+        "let s = null; const out = [];\n"
+        "for (const v of seq) { const r = m.prever(v, {serie: 'ser_alfa_1', estado_alerta: s});"
+        " s = r.alerta; out.push([r.alerta.em_alerta, r.alerta.dias_acima]); }\n"
+        "console.log(JSON.stringify(out));\n"
     )
     alvo = pasta / "_teste_histerese.cjs"
     alvo.write_text(roteiro, encoding="utf-8")
@@ -173,9 +188,7 @@ def test_limiar_e_histerese_no_pacote(experimento_completo: Path) -> None:
         concluido = subprocess.run(
             ["node", str(alvo)], capture_output=True, text=True, check=True, timeout=60
         )
-        corpo = json.loads(concluido.stdout.strip().splitlines()[-1])
-        assert corpo["p1"] > 0.1
-        # Primeiro dia alto não liga; segundo pode ligar conforme o limiar.
-        assert corpo["a2"] in (True, False)
+        obtidos = json.loads(concluido.stdout.strip().splitlines()[-1])
     finally:
         alvo.unlink(missing_ok=True)
+    assert obtidos == esperados
