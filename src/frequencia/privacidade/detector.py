@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import polars as pl
 
@@ -85,7 +86,7 @@ class Achado:
         }
 
 
-def _motor_presidio():
+def _motor_presidio() -> Any:
     """Cria o motor presidio em modo padrão; devolve None quando indisponível."""
     try:
         import spacy
@@ -117,7 +118,7 @@ def _motor_presidio():
         def get_supported_entities(self) -> list[str]:
             return []
 
-        def process_text(self, text: str, language: str):
+        def process_text(self, text: str, language: str) -> Any:
             documento = self._nlp(text)
             return NlpArtifacts(
                 entities=[],
@@ -130,12 +131,12 @@ def _motor_presidio():
 
         def process_batch(
             self,
-            texts,
+            texts: Any,
             language: str,
             batch_size: int = 1,
             n_process: int = 1,
-            **kwargs,
-        ):
+            **kwargs: Any,
+        ) -> Any:
             return [(texto, self.process_text(texto, language)) for texto in texts]
 
         def is_stopword(self, word: str, language: str) -> bool:
@@ -160,10 +161,10 @@ def _motor_presidio():
     return AnalyzerEngine(nlp_engine=MotorNlpLeve(), registry=registro, supported_languages=["pt"])
 
 
-_MOTOR = None
+_MOTOR: Any = None
 
 
-def motor_presidio():
+def motor_presidio() -> Any:
     """Instância única do motor presidio em modo padrão."""
     global _MOTOR
     if _MOTOR is None:

@@ -43,7 +43,7 @@ make venv-qualidade
 FREQUENCIA_TESTES_LENTOS=1 python -m pytest tests/exportacao/test_qualidade.py -q
 ```
 
-A suíte completa leva alguns minutos: a medição de referência, num contêiner de desenvolvimento em outubro de 2026, foi de cerca de 12 minutos. Em Docker Desktop com o repositório em OneDrive, o bind mount pode deixar a execução mais lenta. Os testes que exigem Node pulam com aviso quando ele está ausente; a imagem de desenvolvimento já inclui Node.
+A suíte completa roda em cerca de um minuto e meio num contêiner de desenvolvimento (medição de outubro de 2026), sem contar o teste lento de qualidade. Em Docker Desktop com o repositório em OneDrive, o bind mount pode deixar a execução mais lenta. Os testes que exigem Node pulam com aviso quando ele está ausente; a imagem de desenvolvimento já inclui Node.
 
 O dicionário de features é gerado por `scripts/gerar_dicionario.py` e conferido no workflow de qualidade. O ciclo em Docker é validado pelo job `Compose e imagem` do workflow `testes.yml`.
 

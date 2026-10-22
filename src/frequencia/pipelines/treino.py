@@ -223,7 +223,7 @@ def destilar(
     }
 
 
-def carregar_modelo(pasta: Path):
+def carregar_modelo(pasta: Path) -> Any:
     """Carrega o modelo principal de um experimento."""
     import joblib
 
@@ -234,7 +234,7 @@ def carregar_modelo(pasta: Path):
     return joblib.load(alvo)
 
 
-def carregar_estudante(pasta: Path):
+def carregar_estudante(pasta: Path) -> Any:
     """Carrega o modelo destilado de um experimento."""
     import joblib
 
@@ -259,7 +259,7 @@ def _otimizar(
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-    def objetivo(ens):
+    def objetivo(ens: Any) -> float:
         parametros = dict(config.parametros)
         parametros.update(
             {

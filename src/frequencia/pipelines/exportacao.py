@@ -46,7 +46,7 @@ console.log(JSON.stringify({
 """
 
 
-def gerar_nucleo_js(estudante) -> str:
+def gerar_nucleo_js(estudante: Any) -> str:
     """Transpila o modelo destilado para o núcleo JavaScript."""
     import m2cgen
 
@@ -230,7 +230,7 @@ def prever_em_python(
     }
 
 
-def exportar_onnx(estudante, destino: Path, n_features: int) -> Path:
+def exportar_onnx(estudante: Any, destino: Path, n_features: int) -> Path:
     """Exporta o modelo destilado para ONNX (caminho alternativo)."""
     from onnxmltools import convert_lightgbm
     from onnxmltools.convert.common.data_types import FloatTensorType
