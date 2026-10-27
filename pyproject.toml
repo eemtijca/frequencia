@@ -34,7 +34,7 @@ dependencies = [
   "xgboost==3.4.1",
   "catboost==1.2.10",
   "optuna==5.0.0",
-  "mlflow==3.17.1",
+  "mlflow==3.17.2",
   "dvc==3.67.1",
   "onnx==1.23.2",
   "skl2onnx==1.20.0",
