@@ -42,7 +42,7 @@ dependencies = [
   "m2cgen==0.10.0",
   "typer==0.27.3",
   "rich==15.0.0",
-  "streamlit==1.66.0",
+  "streamlit==1.66.1",
   "presidio-analyzer==2.2.364",
   "pyyaml==6.0.3",
   "packaging==26.3",
