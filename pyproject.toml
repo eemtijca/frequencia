@@ -43,7 +43,7 @@ dependencies = [
   "typer==0.27.3",
   "rich==15.0.0",
   "streamlit==1.66.1",
-  "presidio-analyzer==2.2.364",
+  "presidio-analyzer==2.2.366",
   "pyyaml==6.0.3",
   "packaging==26.3",
 ]
