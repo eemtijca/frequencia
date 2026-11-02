@@ -23,12 +23,12 @@ classifiers = [
 # Todas as dependências são fixadas por versão exata para reprodutibilidade
 # do caminho venv e do caminho Docker. Substituições exigem ADR (ver docs/adr/007-stack-fixada.md).
 dependencies = [
-  "polars==2.0.0",
-  "pandas==3.0.6",
+  "polars==2.1.0",
+  "pandas==3.1.0",
   "pyarrow==25.0.1",
   "numpy==2.4.6",
   "scipy==1.18.1",
-  "pandera==0.34.1",
+  "pandera==0.35.0",
   "scikit-learn==1.9.1",
   "lightgbm==4.7.0",
   "xgboost==3.4.1",
