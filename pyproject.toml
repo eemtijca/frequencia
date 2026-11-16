@@ -23,37 +23,37 @@ classifiers = [
 # Todas as dependências são fixadas por versão exata para reprodutibilidade
 # do caminho venv e do caminho Docker. Substituições exigem ADR (ver docs/adr/007-stack-fixada.md).
 dependencies = [
-  "polars==2.0.0",
-  "pandas==3.0.6",
+  "polars==2.1.0",
+  "pandas==3.1.0",
   "pyarrow==25.0.1",
   "numpy==2.4.6",
   "scipy==1.18.1",
-  "pandera==0.34.1",
+  "pandera==0.35.0",
   "scikit-learn==1.9.1",
   "lightgbm==4.7.0",
   "xgboost==3.4.1",
   "catboost==1.2.10",
   "optuna==5.0.0",
-  "mlflow==3.17.2",
+  "mlflow==3.18.0",
   "dvc==3.67.1",
   "onnx==1.23.2",
   "skl2onnx==1.20.0",
   "onnxmltools==1.16.0",
   "m2cgen==0.10.0",
-  "typer==0.27.3",
+  "typer==0.28.0",
   "rich==15.0.0",
-  "streamlit==1.66.1",
-  "presidio-analyzer==2.2.364",
+  "streamlit==1.67.0",
+  "presidio-analyzer==2.2.366",
   "pyyaml==6.0.3",
   "packaging==26.3",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest==9.1.1",
-  "hypothesis==6.170.8",
-  "ruff==0.17.2",
-  "mypy==2.4.0",
+  "pytest==9.2.0",
+  "hypothesis==6.170.14",
+  "ruff==0.17.4",
+  "mypy==2.4.1",
   "pre-commit==4.7.0",
   "build==1.6.1",
 ]
