@@ -40,10 +40,10 @@ dependencies = [
   "skl2onnx==1.20.0",
   "onnxmltools==1.16.0",
   "m2cgen==0.10.0",
-  "typer==0.27.3",
+  "typer==0.28.0",
   "rich==15.0.0",
-  "streamlit==1.66.1",
-  "presidio-analyzer==2.2.364",
+  "streamlit==1.67.0",
+  "presidio-analyzer==2.2.366",
   "pyyaml==6.0.3",
   "packaging==26.3",
 ]
