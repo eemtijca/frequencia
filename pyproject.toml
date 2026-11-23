@@ -33,7 +33,7 @@ dependencies = [
   "lightgbm==4.7.0",
   "xgboost==3.4.1",
   "catboost==1.2.10",
-  "optuna==5.0.0",
+  "optuna==5.1.0",
   "mlflow==3.18.0",
   "dvc==3.67.1",
   "onnx==1.23.2",
